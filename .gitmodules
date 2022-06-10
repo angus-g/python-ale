@@ -1,0 +1,4 @@
+[submodule "mom6"]
+	path = mom6
+	url = https://github.com/angus-g/mom6
+	branch = adaptive-coordinate
