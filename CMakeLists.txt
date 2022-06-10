@@ -1,10 +1,19 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(ALE Fortran)
+project(pyale
+  LANGUAGES Fortran C)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package(NetCDF COMPONENTS Fortran REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development NumPy)
+
+execute_process(
+  COMMAND "${Python3_EXECUTABLE}"
+  -c "import numpy.f2py; print(numpy.f2py.get_include())"
+  OUTPUT_VARIABLE F2PY_INCLUDE_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 option(SYMMETRIC "Use symmetric memory" ON)
 if(SYMMETRIC)
@@ -85,4 +94,35 @@ set(MOM_inc
 
 add_library(MOM6 ${MOM_src} ${shim_src})
 target_include_directories(MOM6 PRIVATE ${MOM_inc})
-target_link_libraries(MOM6 NetCDF::NetCDF_Fortran)
+target_link_libraries(MOM6 NetCDF::NetCDF_C)
+
+set(f2py_module_name "pyale")
+set(fortran_src_file "${CMAKE_SOURCE_DIR}/pyale_mod.F90")
+set(f2py_module_c "${f2py_module_name}module.c")
+set(f2py_wrapper_f90 "${f2py_module_name}-f2pywrappers2.f90")
+set(generated_module_file "${f2py_module_name}${Python3_SOABI}")
+
+add_custom_target(
+  genpyf
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_c}"
+)
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_c}" "${CMAKE_CURRENT_BINARY_DIR}/${f2py_wrapper_f90}"
+  COMMAND ${Python3_EXECUTABLE} -m "numpy.f2py" "${fortran_src_file}" -m "${f2py_module_name}" --lower
+  DEPENDS ${fortran_src_file}
+)
+
+add_library(pyale SHARED
+  "${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_c}" "${CMAKE_CURRENT_BINARY_DIR}/${f2py_wrapper_f90}"
+  "${F2PY_INCLUDE_DIR}/fortranobject.c"
+  "${fortran_src_file}"
+)
+add_dependencies(pyale genpyf)
+target_link_libraries(pyale MOM6)
+target_include_directories(pyale PUBLIC
+  ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} ${F2PY_INCLUDE_DIR})
+set_target_properties(pyale
+  PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "pyale"
+  LINKER_LANGUAGE C)

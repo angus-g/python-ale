@@ -14,8 +14,11 @@ module MOM_domain_infra
   public :: create_MOM_domain, clone_MOM_domain, deallocate_MOM_domain
 
   type :: MOM_domain_type
-    integer :: nihalo, njhalo, turns
-    logical :: nonblocking_updates
+    integer :: niglobal, njglobal, nihalo, njhalo
+    logical :: symmetric
+    logical :: x_reentrant, y_reentrant
+    integer :: turns ! not needed
+    logical :: nonblocking_updates ! not needed
     type(MOM_domain_type), pointer :: domain_in => NULL()
   end type MOM_domain_type
 
@@ -324,7 +327,11 @@ contains
     print *, "create_MOM_domain"
     if (.not. associated(MOM_dom)) allocate(MOM_dom)
 
+    MOM_dom%niglobal = n_global(1) ; MOM_dom%njglobal = n_global(2)
     MOM_dom%nihalo = n_halo(1) ; MOM_dom%njhalo = n_halo(2)
+    MOM_dom%x_reentrant = reentrant(1) ; MOM_dom%y_reentrant = reentrant(2)
+    MOM_dom%symmetric = symmetric
+
     MOM_dom%turns = 0
   end subroutine create_MOM_domain
 
