@@ -4,6 +4,7 @@ module MOM_time_manager
 
   public :: set_time, get_time, time_type, get_ticks_per_second
   public :: set_date, get_date, real_to_time, operator(-), operator(==)
+  public :: days_in_month, time_type_to_real
 
   interface set_date
     module procedure set_date_i, set_date_c
@@ -29,6 +30,14 @@ contains
 
     time_eq = .false.
   end function time_eq
+
+  function days_in_month(time, err_msg)
+    type(time_type), intent(in) :: time
+    character(len=*), optional, intent(out) :: err_msg
+    integer :: days_in_month
+
+    days_in_month = 30
+  end function days_in_month
 
   subroutine set_time
 
@@ -89,5 +98,12 @@ contains
     real, intent(in) :: x
     character(len=*), optional, intent(out) :: err_msg
   end function real_to_time
+
+  function time_type_to_real(time)
+    type(time_type), intent(in) :: time
+    real :: time_type_to_real
+
+    time_type_to_real = 0.0
+  end function time_type_to_real
 
 end module MOM_time_manager

@@ -47,6 +47,10 @@ module MOM_io_infra
     module procedure write_metadata_axis, write_metadata_field, write_metadata_global
   end interface write_metadata
 
+  interface close_file
+    module procedure close_file_unit, close_file_type
+  end interface close_file
+
   type :: file_type
     character(len=:), allocatable :: filename
   end type file_type
@@ -63,7 +67,7 @@ contains
     character(len=*), intent(in) :: filename
     logical :: FMS_file_exists
 
-    print *, "FMS_file_exists"
+    print *, "FMS_file_exists? ", filename
     FMS_file_exists = .false.
   end function FMS_file_exists
 
@@ -276,12 +280,18 @@ contains
     unit = 0
   end subroutine open_ASCII_file
 
-  subroutine close_file(io_handle)
+  subroutine close_file_unit(unit)
+    integer, intent(inout) :: unit
+
+    print *, "close_file_unit", unit
+  end subroutine close_file_unit
+
+  subroutine close_file_type(io_handle)
     type(file_type), intent(inout) :: io_handle
 
     print *, "close_file_type", io_handle%filename
     if (allocated(io_handle%filename)) deallocate(io_handle%filename)
-  end subroutine close_file
+  end subroutine close_file_type
 
   subroutine flush_file(io_handle)
     type(file_type), intent(in) :: io_handle

@@ -53,6 +53,14 @@ module MOM_domain_infra
     module procedure create_vector_group_pass_3d
   end interface create_group_pass
 
+  interface pass_var
+    module procedure pass_var_2d, pass_var_3d
+  end interface pass_var
+
+  interface pass_vector
+    module procedure pass_vector_2d, pass_vector_3d
+  end interface pass_vector
+
   interface get_domain_components
     module procedure get_domain_components_MD, get_domain_components_d2D
   end interface get_domain_components
@@ -238,23 +246,41 @@ contains
     print *, "fill_symmetric_edges"
   end subroutine fill_symmetric_edges
 
-  subroutine pass_var(array, MOM_dom, sideflag, complete, position, halo, inner_halo, clock)
+  subroutine pass_var_2d(array, MOM_dom, sideflag, complete, position, halo, inner_halo, clock)
     real, dimension(:,:), intent(inout) :: array
     type(MOM_domain_type), intent(inout) :: MOM_dom
     integer, optional, intent(in) :: sideflag, position, halo, inner_halo, clock
     logical, optional, intent(in) :: complete
 
     print *, "pass_var_2d"
-  end subroutine pass_var
+  end subroutine pass_var_2d
 
-  subroutine pass_vector(u_cmpt, v_cmpt, MOM_dom, direction, stagger, complete, halo, clock)
+  subroutine pass_var_3d(array, MOM_dom, sideflag, complete, position, halo, clock)
+    real, dimension(:,:,:), intent(inout) :: array
+    type(MOM_domain_type), intent(inout) :: MOM_dom
+    integer, optional, intent(in) :: sideflag, position, halo, clock
+    logical, optional, intent(in) :: complete
+
+    print *, "pass_var_3d"
+  end subroutine pass_var_3d
+
+  subroutine pass_vector_2d(u_cmpt, v_cmpt, MOM_dom, direction, stagger, complete, halo, clock)
     real, dimension(:,:), intent(inout) :: u_cmpt, v_cmpt
     type(MOM_domain_type), intent(inout) :: MOM_dom
     integer, optional, intent(in) :: direction, stagger, halo, clock
     logical, optional, intent(in) :: complete
 
     print *, "pass_vector_2d"
-  end subroutine pass_vector
+  end subroutine pass_vector_2d
+
+  subroutine pass_vector_3d(u_cmpt, v_cmpt, MOM_dom, direction, stagger, complete, halo, clock)
+    real, dimension(:,:,:), intent(inout) :: u_cmpt, v_cmpt
+    type(MOM_domain_type), intent(inout) :: MOM_dom
+    integer, optional, intent(in) :: direction, stagger, halo, clock
+    logical, optional, intent(in) :: complete
+
+    print *, "pass_vector_3d"
+  end subroutine pass_vector_3d
 
   subroutine compute_block_extent(isg, ieg, ndivs, ibegin, iend)
     integer, intent(in) :: isg, ieg, ndivs
@@ -267,7 +293,8 @@ contains
     type(MOM_domain_type), intent(in) :: domain
     integer, intent(out) :: niglobal, njglobal
 
-    print *, "get_global_shape"
+    niglobal = domain%niglobal
+    njglobal = domain%njglobal
   end subroutine get_global_shape
 
   subroutine get_domain_extent_MD(domain, isc, iec, jsc, jec, isd, ied, jsd, jed, &
@@ -280,7 +307,23 @@ contains
     logical, optional, intent(in) :: local_indexing
     integer, optional, intent(in) :: index_offset, coarsen
 
-    print *, "get_domain_extent_MD"
+    ! data domains start at 1
+    isd = 1 ; jsd = 1
+    ! compute domains start after the halo
+    isc = domain%nihalo ; jsc = domain%njhalo
+    ! compute domains end after niglobal/njglobal points
+    iec = isc + domain%niglobal - 1 ; jec = jsc + domain%njglobal
+    ! data domains add halo on top
+    ied = iec + domain%nihalo ; jed = jec + domain%njhalo
+
+    if (present(isg)) isg = isc
+    if (present(ieg)) ieg = iec
+    if (present(jsg)) jsg = jsc
+    if (present(jeg)) jeg = jec
+    if (present(idg_offset)) idg_offset = 0
+    if (present(jdg_offset)) jdg_offset = 0
+
+    if (present(symmetric)) symmetric = domain%symmetric
   end subroutine get_domain_extent_MD
 
   subroutine get_domain_extent_d2D(domain, isc, iec, jsc, jec, isd, ied, jsd, jed)
@@ -324,7 +367,6 @@ contains
     character(len=*), optional, intent(in) :: domain_name, mask_table
     logical, optional, intent(in) :: symmetric, thin_halos, nonblocking
 
-    print *, "create_MOM_domain"
     if (.not. associated(MOM_dom)) allocate(MOM_dom)
 
     MOM_dom%niglobal = n_global(1) ; MOM_dom%njglobal = n_global(2)
@@ -344,8 +386,14 @@ contains
     logical, optional, intent(in) :: symmetric
     character(len=*), optional, intent(in) :: domain_name
 
-    print *, "clone_MD_to_MD"
     if (.not. associated(MOM_dom)) allocate(MOM_dom)
+
+    MOM_dom%niglobal = MD_in%niglobal ; MOM_dom%njglobal = MD_in%njglobal
+    MOM_dom%nihalo = MD_in%nihalo ; MOM_dom%njhalo = MD_in%njhalo
+    MOM_dom%x_reentrant = MD_in%x_reentrant ; MOM_dom%y_reentrant = MD_in%y_reentrant
+    MOM_dom%symmetric = MD_in%symmetric
+
+    MOM_dom%turns = 0
   end subroutine clone_MOM_domain
 
   subroutine deallocate_MOM_domain(MOM_domain, cursory)
