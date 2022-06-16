@@ -286,7 +286,8 @@ contains
     integer, intent(in) :: isg, ieg, ndivs
     integer, dimension(:), intent(out) :: ibegin, iend
 
-    print *, "compute_block_extent"
+    print *, "compute_block_extent: ", ndivs
+    ibegin = isg ; iend = ieg
   end subroutine compute_block_extent
 
   subroutine get_global_shape(domain, niglobal, njglobal)
@@ -312,7 +313,7 @@ contains
     ! compute domains start after the halo
     isc = domain%nihalo ; jsc = domain%njhalo
     ! compute domains end after niglobal/njglobal points
-    iec = isc + domain%niglobal - 1 ; jec = jsc + domain%njglobal
+    iec = isc + domain%niglobal - 1 ; jec = jsc + domain%njglobal - 1
     ! data domains add halo on top
     ied = iec + domain%nihalo ; jed = jec + domain%njhalo
 
