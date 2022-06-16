@@ -9,6 +9,7 @@ module pyale_mod
   use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
   use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
   use MOM_verticalGrid, only : verticalGridInit, verticalGrid_type
+  use MOM_regridding, only : initialize_regridding, regridding_CS
 
   implicit none ; private
 
@@ -22,6 +23,7 @@ module pyale_mod
     type(unit_scale_type), pointer :: US => NULL()
     type(ocean_OBC_type), pointer :: OBC => NULL()
     type(verticalGrid_type), pointer :: GV => NULL()
+    type(regridding_CS) :: regrid_CS
   end type MOM_state_type
 
 contains
@@ -39,6 +41,8 @@ contains
     call MOM_initialize_fixed(CS%dG, CS%US, CS%OBC, CS%param_file, write_geom=.false., output_dir=".")
     call copy_dyngrid_to_MOM_grid(CS%dG, CS%G, CS%US)
     call verticalGridInit(CS%param_file, CS%GV, CS%US)
+
+    call initialize_regridding(CS%regrid_CS, CS%GV, CS%US, CS%G%max_depth, CS%param_file, "create_domain", "ZSTAR", "", "")
 
     print *, "create_domain done"
   end subroutine create_domain
