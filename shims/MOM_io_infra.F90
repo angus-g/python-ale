@@ -1,8 +1,9 @@
 module MOM_io_infra
 
   use, intrinsic :: iso_fortran_env, only : int64
-  use MOM_domain_infra, only : MOM_domain_type, domain1D, domain2d
+  use MOM_domain_infra, only : MOM_domain_type, domain1D, domain2d, get_domain_extent
   use MOM_domain_infra, only : CENTER, CORNER, NORTH_FACE, EAST_FACE
+  use netcdf
 
   implicit none ; private
 
@@ -63,6 +64,15 @@ module MOM_io_infra
 
 contains
 
+  subroutine check_netcdf_err(err, msg)
+    integer, intent(in) :: err
+    character(len=*), intent(in) :: msg
+
+    if (err .ne. nf90_noerr) then
+      print *, trim(msg), ": ", trim(nf90_strerror(err))
+    end if
+  end subroutine check_netcdf_err
+
   function FMS_file_exists(filename)
     character(len=*), intent(in) :: filename
     logical :: FMS_file_exists
@@ -76,8 +86,7 @@ contains
     type(MOM_domain_type), intent(in) :: MOM_domain
     logical :: MOM_file_exists
 
-    print *, "MOM_file_exists"
-    MOM_file_exists = .false.
+    inquire(file=trim(filename), exist=MOM_file_exists)
   end function MOM_file_exists
 
   function MOM_namelist_file(file) result(unit)
@@ -363,7 +372,26 @@ contains
     real, optional, intent(in) :: scale
     logical, optional, intent(in) :: global_file, file_may_be_4d
 
-    print *, "read_field_2d", filename, fieldname
+    integer :: err, ncid, varid
+    integer :: isc, iec, jsc, jec, isd, ied, jsd, jed
+
+    err = nf90_open(trim(filename), nf90_nowrite, ncid)
+    call check_netcdf_err(err, "read_field_2d open")
+
+    err = nf90_inq_varid(ncid, trim(fieldname), varid)
+    call check_netcdf_err(err, "read_field_2d inq_varid")
+
+    if (present(MOM_domain)) then
+      call get_domain_extent(MOM_domain, isc, iec, jsc, jec, isd, ied, jsd, jed)
+      err = nf90_get_var(ncid, varid, data(isc:iec, jsc:jec))
+      call check_netcdf_err(err, "read_field_2d get_var")
+    else
+      err = nf90_get_var(ncid, varid, data)
+      call check_netcdf_err(err, "read_field_2d get_var")
+    end if
+
+    err = nf90_close(ncid)
+    call check_netcdf_err(err, "read_field_2d close")
   end subroutine read_field_2d
 
   subroutine read_field_2d_region(filename, fieldname, data, start, nread, MOM_domain, &
