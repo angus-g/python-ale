@@ -7,6 +7,7 @@ module pyale_mod
   use MOM_hor_index, only : hor_index_init, hor_index_type
   use MOM_open_boundary, only : ocean_OBC_type
   use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
+  use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
 
   implicit none ; private
 
@@ -29,6 +30,7 @@ contains
     call unit_no_scaling_init(US)
     call MOM_grid_init(G, param_file, US=US, HI=HI)
     call MOM_initialize_fixed(dG, US, OBC, param_file, write_geom=.false., output_dir=".")
+    call copy_dyngrid_to_MOM_grid(dG, G, US)
 
     print *, "create_domain done"
   end subroutine create_domain

@@ -251,8 +251,6 @@ contains
     type(MOM_domain_type), intent(inout) :: MOM_dom
     integer, optional, intent(in) :: sideflag, position, halo, inner_halo, clock
     logical, optional, intent(in) :: complete
-
-    print *, "pass_var_2d"
   end subroutine pass_var_2d
 
   subroutine pass_var_3d(array, MOM_dom, sideflag, complete, position, halo, clock)
@@ -269,8 +267,6 @@ contains
     type(MOM_domain_type), intent(inout) :: MOM_dom
     integer, optional, intent(in) :: direction, stagger, halo, clock
     logical, optional, intent(in) :: complete
-
-    print *, "pass_vector_2d"
   end subroutine pass_vector_2d
 
   subroutine pass_vector_3d(u_cmpt, v_cmpt, MOM_dom, direction, stagger, complete, halo, clock)

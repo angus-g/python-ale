@@ -72,6 +72,7 @@ set(MOM_src
   mom6/src/framework/posix.F90
 
   mom6/src/core/MOM_grid.F90
+  mom6/src/core/MOM_transcribe_grid.F90
   mom6/src/core/MOM_variables.F90
   mom6/src/core/MOM_verticalGrid.F90
 
