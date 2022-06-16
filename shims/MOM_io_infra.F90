@@ -383,7 +383,7 @@ contains
 
     if (present(MOM_domain)) then
       call get_domain_extent(MOM_domain, isc, iec, jsc, jec, isd, ied, jsd, jed)
-      err = nf90_get_var(ncid, varid, data(isc:iec, jsc:jec))
+      err = nf90_get_var(ncid, varid, data(isc:iec,jsc:jec))
       call check_netcdf_err(err, "read_field_2d get_var")
     else
       err = nf90_get_var(ncid, varid, data)
@@ -415,7 +415,26 @@ contains
     real, optional, intent(in) :: scale
     logical, optional, intent(in) :: global_file, file_may_be_4d
 
-    print *, "read_field_3d", filename, fieldname
+    integer :: err, ncid, varid
+    integer :: isc, iec, jsc, jec, isd, ied, jsd, jed
+
+    err = nf90_open(trim(filename), nf90_nowrite, ncid)
+    call check_netcdf_err(err, "read_field_3d open")
+
+    err = nf90_inq_varid(ncid, trim(fieldname), varid)
+    call check_netcdf_err(err, "read_field_3d inq_varid")
+
+    if (present(MOM_domain)) then
+      call get_domain_extent(MOM_domain, isc, iec, jsc, jec, isd, ied, jsd, jed)
+      err = nf90_get_var(ncid, varid, data(isc:iec,jsc:jec,:))
+      call check_netcdf_err(err, "read_field_3d get_var")
+    else
+      err = nf90_get_var(ncid, varid, data)
+      call check_netcdf_err(err, "read_field_3d get_var")
+    end if
+
+    err = nf90_close(ncid)
+    call check_netcdf_err(err, "read_field_3d close")
   end subroutine read_field_3d
 
   subroutine read_field_4d(filename, fieldname, data, MOM_domain, timelevel, &

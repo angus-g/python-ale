@@ -1,19 +1,23 @@
 module pyale_mod
+  use, intrinsic :: iso_c_binding
+
   use MOM_domains, only : MOM_domains_init, MOM_domain_type, clone_MOM_domain
   use MOM_dyn_horgrid, only : create_dyn_horgrid, dyn_horgrid_type
   use MOM_file_parser, only : param_file_type, open_param_file
   use MOM_fixed_initialization, only : MOM_initialize_fixed
   use MOM_grid, only : MOM_grid_init, ocean_grid_type
   use MOM_hor_index, only : hor_index_init, hor_index_type
+  use MOM_io, only : MOM_read_data
   use MOM_open_boundary, only : ocean_OBC_type
-  use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
-  use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
-  use MOM_verticalGrid, only : verticalGridInit, verticalGrid_type
   use MOM_regridding, only : initialize_regridding, regridding_CS
+  use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
+  use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
+  use MOM_variables, only : thermo_var_ptrs
+  use MOM_verticalGrid, only : verticalGridInit, verticalGrid_type
 
   implicit none ; private
 
-  public :: create_domain
+  public :: init_MOM_state, load_MOM_restart, init_MOM_ALE, destroy_MOM_state
 
   type, public :: MOM_state_type ; private
     type(ocean_grid_type) :: G
@@ -23,13 +27,22 @@ module pyale_mod
     type(unit_scale_type), pointer :: US => NULL()
     type(ocean_OBC_type), pointer :: OBC => NULL()
     type(verticalGrid_type), pointer :: GV => NULL()
+    type(thermo_var_ptrs) :: tv
     type(regridding_CS) :: regrid_CS
+
+    real, dimension(:,:,:), allocatable :: h, T, S
   end type MOM_state_type
 
 contains
 
-  subroutine create_domain
-    type(MOM_state_type) :: CS
+  subroutine init_MOM_state(ptr)
+    !f2py integer(8), intent(out) :: ptr
+    type(c_ptr), intent(out) :: ptr
+
+    type(MOM_state_type), pointer :: CS
+    integer :: isd, ied, jsd, jed, nk
+    allocate(CS)
+    ptr = c_loc(CS)
 
     call open_param_file("MOM_input", CS%param_file)
     call MOM_domains_init(CS%G%domain, CS%param_file, symmetric=.true., domain_name="MOM_in")
@@ -42,8 +55,43 @@ contains
     call copy_dyngrid_to_MOM_grid(CS%dG, CS%G, CS%US)
     call verticalGridInit(CS%param_file, CS%GV, CS%US)
 
-    call initialize_regridding(CS%regrid_CS, CS%GV, CS%US, CS%G%max_depth, CS%param_file, "create_domain", "ZSTAR", "", "")
+    isd = CS%HI%isd ; ied = CS%HI%ied ; jsd = CS%HI%jsd ; jed = CS%HI%jed ; nk=CS%GV%ke
+    allocate(CS%T(isd:ied,jsd:jed,nk))
+    allocate(CS%S(isd:ied,jsd:jed,nk))
+    CS%tv%T => CS%T ; CS%tv%S => CS%s
+  end subroutine init_MOM_state
 
-    print *, "create_domain done"
-  end subroutine create_domain
+  subroutine load_MOM_restart(ptr, restart_file)
+    !f2py integer(8), intent(in) :: ptr
+    type(c_ptr), intent(in) :: ptr
+    character(len=*), intent(in) :: restart_file
+
+    type(MOM_state_type), pointer :: CS
+    call c_f_pointer(ptr, CS)
+
+    call MOM_read_data(trim(restart_file), "h", CS%h, CS%G%domain)
+    call MOM_read_data(trim(restart_file), "Temp", CS%T, CS%G%domain)
+    call MOM_read_data(trim(restart_file), "Salt", CS%S, CS%G%domain)
+  end subroutine load_MOM_restart
+
+  subroutine init_MOM_ALE(ptr, regridding_scheme)
+    !f2py integer(8), intent(in) :: ptr
+    type(c_ptr), intent(in) :: ptr
+    character(len=*), intent(in) :: regridding_scheme
+
+    type(MOM_state_type), pointer :: CS
+    call c_f_pointer(ptr, CS)
+
+    call initialize_regridding(CS%regrid_CS, CS%GV, CS%US, CS%G%max_depth, &
+         CS%param_file, "init_MOM_state", trim(regridding_scheme), "", "")
+  end subroutine init_MOM_ALE
+
+  subroutine destroy_MOM_state(ptr)
+    !f2py integer(8), intent(in) :: ptr
+    type(c_ptr), intent(in) :: ptr
+
+    type(MOM_state_type), pointer :: CS
+    call c_f_pointer(ptr, CS)
+    deallocate(CS)
+  end subroutine destroy_MOM_state
 end module pyale_mod
