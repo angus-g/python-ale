@@ -151,24 +151,31 @@ target_link_libraries(MOM6 netCDF::netcdff)
 set(f2py_module_name "pyale")
 set(fortran_src_file "${CMAKE_SOURCE_DIR}/pyale_mod.F90")
 set(f2py_module_c "${f2py_module_name}module.c")
-set(f2py_wrapper_f90 "${f2py_module_name}-f2pywrappers2.f90")
+set(f90wrap_wrapper "${CMAKE_CURRENT_BINARY_DIR}/f90wrap_pyale_mod.f90")
 set(generated_module_file "${f2py_module_name}${Python3_SOABI}")
 
 add_custom_target(
   genpyf
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_c}"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
 )
 add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_c}" "${CMAKE_CURRENT_BINARY_DIR}/${f2py_wrapper_f90}"
-  COMMAND ${Python3_EXECUTABLE} -m "numpy.f2py" "${fortran_src_file}" -m "${f2py_module_name}" --lower
-u  DEPENDS ${fortran_src_file}
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
+  COMMAND ${Python3_EXECUTABLE} -m "numpy.f2py" "${f90wrap_wrapper}" -m "_${f2py_module_name}" --lower
+  DEPENDS ${f90wrap_wrapper}
+)
+add_custom_command(
+  OUTPUT ${f90wrap_wrapper} "${CMAKE_CURRENT_BINARY_DIR}/pyale.py"
+  COMMAND ${Python3_EXECUTABLE} -m "f90wrap" -m "${f2py_module_name}" -k "${CMAKE_SOURCE_DIR}/.f2py_f2cmap" "${fortran_src_file}"
+  DEPENDS ${fortran_src_file}
 )
 
 add_library(pyale SHARED
-  "${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_c}" "${CMAKE_CURRENT_BINARY_DIR}/${f2py_wrapper_f90}"
+  "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
   "${F2PY_INCLUDE_DIR}/fortranobject.c"
   "${fortran_src_file}"
+  "${f90wrap_wrapper}"
 )
+
 add_dependencies(pyale genpyf)
 target_link_libraries(pyale MOM6)
 target_include_directories(pyale PUBLIC
@@ -176,5 +183,5 @@ target_include_directories(pyale PUBLIC
 set_target_properties(pyale
   PROPERTIES
   PREFIX ""
-  OUTPUT_NAME "pyale"
+  OUTPUT_NAME "_pyale"
   LINKER_LANGUAGE C)
