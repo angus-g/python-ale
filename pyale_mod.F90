@@ -10,7 +10,8 @@ module pyale_mod
   use MOM_hor_index, only : hor_index_init, hor_index_type
   use MOM_io, only : MOM_read_data
   use MOM_open_boundary, only : ocean_OBC_type
-  use MOM_regridding, only : initialize_regridding, regridding_CS
+  use MOM_regridding, only : initialize_regridding, regridding_main, regridding_CS
+  use MOM_remapping, only : remapping_CS
   use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
   use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
   use MOM_variables, only : thermo_var_ptrs
@@ -30,6 +31,7 @@ module pyale_mod
     type(verticalGrid_type), pointer :: GV => NULL()
     type(thermo_var_ptrs) :: tv
     type(regridding_CS) :: regrid_CS
+    type(remapping_CS) :: remap_CS
 
     real(real64), dimension(:,:,:), pointer :: h => NULL()
     real(real64), dimension(:,:,:), pointer :: T => NULL()
@@ -90,9 +92,12 @@ contains
     real(real64), dimension(:,:,:), intent(out) :: h_new
 
     integer :: isd, ied, jsd, jed, nk
-    real(real64), dimension(:,:,:), allocatable :: dz_regrid
+    real(real64), dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke + 1) :: dz_regrid
 
     isd = CS%HI%isd ; ied = CS%HI%ied ; jsd = CS%HI%jsd ; jed = CS%HI%jed ; nk=CS%GV%ke
+
+    call regridding_main(CS%remap_CS, CS%regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new, &
+         dz_regrid, conv_adjust=.false.)
 
   end subroutine do_regrid
 
