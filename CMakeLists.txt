@@ -3,7 +3,11 @@ cmake_minimum_required(VERSION 3.12)
 project(pyale
   LANGUAGES Fortran C)
 
-find_package(netCDF REQUIRED CONFIGS netCDF-FortranConfig.cmake)
+find_package(netCDF CONFIGS netCDF-FortranConfig.cmake)
+if (NOT netCDF_FOUND)
+  include(FindPkgConfig)
+  pkg_check_modules(netCDF REQUIRED IMPORTED_TARGET "netcdf-fortran")
+endif()
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development NumPy)
 
 execute_process(
@@ -146,7 +150,9 @@ set(MOM_inc
 
 add_library(MOM6 SHARED ${MOM_src} ${shim_src})
 target_include_directories(MOM6 PRIVATE ${MOM_inc})
-target_link_libraries(MOM6 netCDF::netcdff)
+target_link_libraries(MOM6
+  $<TARGET_NAME_IF_EXISTS:netCDF::netcdff>
+  $<TARGET_NAME_IF_EXISTS:PkgConfig::netCDF>)
 
 set(f2py_module_name "pyale")
 set(fortran_src_file "${CMAKE_SOURCE_DIR}/pyale_mod.F90")
@@ -165,9 +171,17 @@ add_custom_command(
 )
 add_custom_command(
   OUTPUT ${f90wrap_wrapper} "${CMAKE_CURRENT_BINARY_DIR}/pyale.py"
-  COMMAND ${Python3_EXECUTABLE} -m "f90wrap" -m "${f2py_module_name}" -k "${CMAKE_SOURCE_DIR}/.f2py_f2cmap" "${fortran_src_file}"
+  COMMAND f90wrap -m "${f2py_module_name}" -k "${CMAKE_SOURCE_DIR}/.f2py_f2cmap" "${fortran_src_file}"
   DEPENDS ${fortran_src_file}
 )
+
+add_custom_target(
+  wrappy
+  DEPENDS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/pyale/pyale.py")
+add_custom_command(
+  OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/pyale/pyale.py"
+  COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/pyale.py" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/pyale"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/pyale.py")
 
 add_library(pyale SHARED
   "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
@@ -176,7 +190,7 @@ add_library(pyale SHARED
   "${f90wrap_wrapper}"
 )
 
-add_dependencies(pyale genpyf)
+add_dependencies(pyale genpyf wrappy)
 target_link_libraries(pyale MOM6)
 target_include_directories(pyale PUBLIC
   ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} ${F2PY_INCLUDE_DIR})
@@ -184,4 +198,4 @@ set_target_properties(pyale
   PROPERTIES
   PREFIX ""
   OUTPUT_NAME "_pyale"
-  LINKER_LANGUAGE C)
+  LINKER_LANGUAGE Fortran)
