@@ -65,7 +65,6 @@ set(MOM_src
   mom6/src/framework/MOM_dyn_horgrid.F90
   mom6/src/framework/MOM_ensemble_manager.F90
   mom6/src/framework/MOM_error_handler.F90
-  mom6/src/framework/MOM_file_parser.F90
   mom6/src/framework/MOM_get_input.F90
   mom6/src/framework/MOM_hor_index.F90
   mom6/src/framework/MOM_io.F90
@@ -140,6 +139,9 @@ set(shim_src
   shims/MOM_io_infra.F90
   shims/MOM_time_manager.F90
 
+  shims/MOM_file_parser.F90
+  shims/get_params.c
+
   # shimming regular modules which we don't need
   shims/MOM_open_boundary.F90
   shims/user_initialization.F90
@@ -150,52 +152,21 @@ set(MOM_inc
 
 add_library(MOM6 SHARED ${MOM_src} ${shim_src})
 target_include_directories(MOM6 PRIVATE ${MOM_inc})
+target_include_directories(MOM6 PUBLIC ${Python3_INCLUDE_DIRS})
 target_link_libraries(MOM6
   $<TARGET_NAME_IF_EXISTS:netCDF::netcdff>
   $<TARGET_NAME_IF_EXISTS:PkgConfig::netCDF>)
 
-set(f2py_module_name "pyale")
-set(fortran_src_file "${CMAKE_SOURCE_DIR}/pyale_mod.F90")
-set(f2py_module_c "${f2py_module_name}module.c")
-set(f90wrap_wrapper "${CMAKE_CURRENT_BINARY_DIR}/f90wrap_pyale_mod.f90")
-set(generated_module_file "${f2py_module_name}${Python3_SOABI}")
-
-add_custom_target(
-  genpyf
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
-)
-add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
-  COMMAND ${Python3_EXECUTABLE} -m "numpy.f2py" "${f90wrap_wrapper}" -m "_${f2py_module_name}" --lower
-  DEPENDS ${f90wrap_wrapper}
-)
-add_custom_command(
-  OUTPUT ${f90wrap_wrapper} "${CMAKE_CURRENT_BINARY_DIR}/pyale.py"
-  COMMAND f90wrap -m "${f2py_module_name}" -k "${CMAKE_SOURCE_DIR}/.f2py_f2cmap" "${fortran_src_file}"
-  DEPENDS ${fortran_src_file}
-)
-
-add_custom_target(
-  wrappy
-  DEPENDS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/pyale/pyale.py")
-add_custom_command(
-  OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/pyale/pyale.py"
-  COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/pyale.py" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/pyale"
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/pyale.py")
-
 add_library(pyale SHARED
-  "${CMAKE_CURRENT_BINARY_DIR}/_${f2py_module_c}"
-  "${F2PY_INCLUDE_DIR}/fortranobject.c"
-  "${fortran_src_file}"
-  "${f90wrap_wrapper}"
+  pyalemodule.c
+  pyale_mod.F90
+  pyale_interop.F90
 )
 
-add_dependencies(pyale genpyf wrappy)
 target_link_libraries(pyale MOM6)
 target_include_directories(pyale PUBLIC
   ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} ${F2PY_INCLUDE_DIR})
 set_target_properties(pyale
   PROPERTIES
   PREFIX ""
-  OUTPUT_NAME "_pyale"
   LINKER_LANGUAGE Fortran)

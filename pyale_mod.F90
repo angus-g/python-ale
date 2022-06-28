@@ -1,10 +1,9 @@
 module pyale_mod
   use, intrinsic :: iso_c_binding
-  use, intrinsic :: iso_fortran_env
 
   use MOM_domains, only : MOM_domains_init, MOM_domain_type, clone_MOM_domain
   use MOM_dyn_horgrid, only : create_dyn_horgrid, dyn_horgrid_type
-  use MOM_file_parser, only : param_file_type, open_param_file
+  use MOM_file_parser, only : param_file_type
   use MOM_fixed_initialization, only : MOM_initialize_fixed
   use MOM_grid, only : MOM_grid_init, ocean_grid_type
   use MOM_hor_index, only : hor_index_init, hor_index_type
@@ -33,18 +32,19 @@ module pyale_mod
     type(regridding_CS) :: regrid_CS
     type(remapping_CS) :: remap_CS
 
-    real(real64), dimension(:,:,:), pointer :: h => NULL()
-    real(real64), dimension(:,:,:), pointer :: T => NULL()
-    real(real64), dimension(:,:,:), pointer :: S => NULL()
+    real, dimension(:,:,:), pointer :: h => NULL()
+    real, dimension(:,:,:), pointer :: T => NULL()
+    real, dimension(:,:,:), pointer :: S => NULL()
   end type MOM_state_type
 
 contains
 
-  subroutine init_MOM_state(CS)
+  subroutine init_MOM_state(CS, params)
     type(MOM_state_type), intent(out) :: CS
+    type(c_ptr), intent(in), value :: params
     integer :: isd, ied, jsd, jed, nk
 
-    call open_param_file("MOM_input", CS%param_file)
+    CS%param_file%ptr = params
     call MOM_domains_init(CS%G%domain, CS%param_file, symmetric=.true., domain_name="MOM_in")
     call hor_index_init(CS%G%domain, CS%HI, CS%param_file)
     call create_dyn_horgrid(CS%dG, CS%HI)
@@ -60,6 +60,9 @@ contains
     allocate(CS%T(isd:ied,jsd:jed,nk))
     allocate(CS%S(isd:ied,jsd:jed,nk))
     CS%tv%T => CS%T ; CS%tv%S => CS%s
+
+    ! we aren't allowed to own the parameter dictionary beyond this point
+    CS%param_file%ptr = c_null_ptr
   end subroutine init_MOM_state
 
   subroutine load_MOM_restart(CS, restart_file)
@@ -89,10 +92,10 @@ contains
 
   subroutine do_regrid(CS, h_new)
     type(MOM_state_type), intent(in) :: CS
-    real(real64), dimension(:,:,:), intent(out) :: h_new
+    real, dimension(:,:,:), intent(out) :: h_new
 
     integer :: isd, ied, jsd, jed, nk
-    real(real64), dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke + 1) :: dz_regrid
+    real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke + 1) :: dz_regrid
 
     isd = CS%HI%isd ; ied = CS%HI%ied ; jsd = CS%HI%jsd ; jed = CS%HI%jed ; nk=CS%GV%ke
 
