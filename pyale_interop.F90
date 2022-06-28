@@ -4,7 +4,7 @@ subroutine init_MOM_state(CS, params) bind(C)
   implicit none
 
   type(c_ptr), intent(inout) :: CS
-  type(c_ptr), value :: params
+  type(c_ptr), intent(in), value :: params
   type(MOM_state_type), pointer :: fCS
 
   allocate(fCS)
@@ -31,6 +31,27 @@ subroutine load_MOM_restart(CS, cpath, pathlen) bind(C)
   call f(fCS, path)
 end subroutine load_MOM_restart
 
+subroutine init_MOM_ale(CS, regrid_CS, params, cscheme, schemelen) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : MOM_state_type, regridding_CS, f => init_MOM_ALE
+  implicit none
+
+  type(c_ptr), intent(in), value :: CS, params
+  type(c_ptr), intent(inout) :: regrid_CS
+  character(kind=c_char), dimension(*) :: cscheme
+  integer(c_int), intent(in), value :: schemelen
+  character(len=schemelen) :: scheme
+  type(MOM_state_type), pointer :: fCS
+  type(regridding_CS), pointer :: rCS
+  integer :: i
+
+  forall (i = 1:schemelen) scheme(i:i) = cscheme(i)
+  allocate(rCS)
+  call c_f_pointer(CS, fCS)
+  call f(fCS, rCS, params, scheme)
+  regrid_CS = c_loc(rCS)
+end subroutine init_MOM_ale
+
 subroutine destroy_MOM_state(CS) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, f => destroy_MOM_state
@@ -46,3 +67,18 @@ subroutine destroy_MOM_state(CS) bind(C)
   end if
   CS = c_null_ptr
 end subroutine destroy_MOM_state
+
+subroutine destroy_MOM_ale(CS) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : regridding_CS
+  implicit none
+
+  type(c_ptr), intent(inout) :: CS
+  type(regridding_CS), pointer :: rCS
+  call c_f_pointer(CS, rCS)
+
+  if (associated(rCS)) then
+    deallocate(rCS)
+  end if
+  CS = c_null_ptr
+end subroutine destroy_MOM_ale

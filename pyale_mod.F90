@@ -18,7 +18,7 @@ module pyale_mod
 
   implicit none ; private
 
-  public :: init_MOM_state, load_MOM_restart, init_MOM_ALE, destroy_MOM_state, do_regrid, domain_size
+  public :: init_MOM_state, load_MOM_restart, init_MOM_ALE, destroy_MOM_state, do_regrid, domain_size, regridding_CS
 
   type, public :: MOM_state_type
     type(ocean_grid_type) :: G
@@ -29,7 +29,6 @@ module pyale_mod
     type(ocean_OBC_type), pointer :: OBC => NULL()
     type(verticalGrid_type), pointer :: GV => NULL()
     type(thermo_var_ptrs) :: tv
-    type(regridding_CS) :: regrid_CS
     type(remapping_CS) :: remap_CS
 
     real, dimension(:,:,:), pointer :: h => NULL()
@@ -74,12 +73,16 @@ contains
     call MOM_read_data(trim(restart_file), "Salt", CS%S, CS%G%domain)
   end subroutine load_MOM_restart
 
-  subroutine init_MOM_ALE(CS, regridding_scheme)
+  subroutine init_MOM_ALE(CS, regrid_CS, params, regridding_scheme)
     type(MOM_state_type), intent(inout) :: CS
+    type(regridding_CS), intent(inout) :: regrid_CS
+    type(c_ptr), intent(in), value :: params
     character(len=*), intent(in) :: regridding_scheme
 
-    call initialize_regridding(CS%regrid_CS, CS%GV, CS%US, CS%G%max_depth, &
+    CS%param_file%ptr = params
+    call initialize_regridding(regrid_CS, CS%GV, CS%US, CS%G%max_depth, &
          CS%param_file, "init_MOM_state", trim(regridding_scheme), "", "")
+    CS%param_file%ptr = c_null_ptr
   end subroutine init_MOM_ALE
 
   subroutine domain_size(CS, dims)
@@ -90,8 +93,9 @@ contains
     dims = [ied - isd + 1, jed - jsd + 1, nk]
   end subroutine domain_size
 
-  subroutine do_regrid(CS, h_new)
+  subroutine do_regrid(CS, regrid_CS, h_new)
     type(MOM_state_type), intent(in) :: CS
+    type(regridding_CS), intent(in) :: regrid_CS
     real, dimension(:,:,:), intent(out) :: h_new
 
     integer :: isd, ied, jsd, jed, nk
@@ -99,7 +103,7 @@ contains
 
     isd = CS%HI%isd ; ied = CS%HI%ied ; jsd = CS%HI%jsd ; jed = CS%HI%jed ; nk=CS%GV%ke
 
-    call regridding_main(CS%remap_CS, CS%regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new, &
+    call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new, &
          dz_regrid, conv_adjust=.false.)
 
   end subroutine do_regrid
