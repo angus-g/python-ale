@@ -299,13 +299,18 @@ contains
     logical, optional, intent(in) :: fail_if_missing, do_not_read, do_not_log, &
          layoutParam, debuggingParam
 
-    logical :: do_read
-    do_read = .true.
+    logical :: do_read, do_log
+    do_read = .true. ; do_log = .true.
     if (present(do_not_read)) do_read = .not. do_not_read
+    if (present(do_not_log)) do_log = .not. do_not_log
 
     if (do_read) then
       if (present(default)) val = default
       call read_param_char(CS, varname, val, fail_if_missing)
+    end if
+    if (do_log) then
+      call log_param_char(CS, modulename, varname, val, desc, units, default, &
+           layoutParam, debuggingParam)
     end if
   end subroutine get_param_char
 
@@ -348,13 +353,18 @@ contains
     logical, optional, intent(in) :: default, fail_if_missing, do_not_read, do_not_log, &
          layoutParam, debuggingParam
 
-    logical :: do_read
-    do_read = .true.
+    logical :: do_read, do_log
+    do_read = .true. ; do_log = .true.
     if (present(do_not_read)) do_read = .not. do_not_read
+    if (present(do_not_log)) do_log = .not. do_not_log
 
     if (do_read) then
       if (present(default)) val = default
       call read_param_logical(CS, varname, val, fail_if_missing)
+    end if
+    if (do_log) then
+      call log_param_logical(CS, modulename, varname, val, desc, units, default, &
+           layoutParam, debuggingParam)
     end if
   end subroutine get_param_logical
 
@@ -424,7 +434,7 @@ contains
     character(len=*), optional, intent(in) :: desc, units, default
     logical, optional, intent(in) :: layoutParam, debuggingParam, like_default
 
-    print *, modulename, " ", varname, ": ", val
+    print *, modulename, " ", varname, ": '", trim(val), "'"
   end subroutine log_param_char
 
   subroutine log_version(CS, modulename, version, desc, log_to_all, all_default, layout, debugging)
