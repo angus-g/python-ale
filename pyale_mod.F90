@@ -3,6 +3,7 @@ module pyale_mod
 
   use MOM_domains, only : MOM_domains_init, MOM_domain_type, clone_MOM_domain
   use MOM_dyn_horgrid, only : create_dyn_horgrid, dyn_horgrid_type
+  use MOM_EOS, only : EOS_init
   use MOM_file_parser, only : param_file_type
   use MOM_fixed_initialization, only : MOM_initialize_fixed
   use MOM_grid, only : MOM_grid_init, ocean_grid_type
@@ -10,7 +11,7 @@ module pyale_mod
   use MOM_io, only : MOM_read_data
   use MOM_open_boundary, only : ocean_OBC_type
   use MOM_regridding, only : initialize_regridding, regridding_main, regridding_CS
-  use MOM_remapping, only : remapping_CS
+  use MOM_remapping, only : initialize_remapping, remapping_CS
   use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
   use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
   use MOM_variables, only : thermo_var_ptrs
@@ -59,6 +60,11 @@ contains
     allocate(CS%T(isd:ied,jsd:jed,nk))
     allocate(CS%S(isd:ied,jsd:jed,nk))
     CS%tv%T => CS%T ; CS%tv%S => CS%s
+
+    allocate(CS%tv%eqn_of_state)
+    call EOS_init(CS%param_file, CS%tv%eqn_of_state, CS%US)
+
+    call initialize_remapping(CS%remap_CS, "PLM")
 
     ! we aren't allowed to own the parameter dictionary beyond this point
     CS%param_file%ptr = c_null_ptr
@@ -116,5 +122,6 @@ contains
     if (associated(CS%h)) deallocate(CS%h)
     if (associated(CS%T)) deallocate(CS%T)
     if (associated(CS%S)) deallocate(CS%S)
+    if (associated(CS%tv%eqn_of_state)) deallocate(CS%tv%eqn_of_state)
   end subroutine destroy_MOM_state
 end module pyale_mod
