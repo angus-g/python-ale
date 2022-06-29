@@ -27,3 +27,44 @@ for a lot of the parallel- and diagnostic-related functionality. We
 can then build an FMS-independent MOM6 shared library, which we link
 against a small driver module that initialises the minimum control
 structures necessary to access ALE.
+
+## An example
+Here's a minimal example for setting up a domain, loading a restart,
+and performing regridding according to that restart. Note that the
+parameters should correspond to those in the `MOM_input` that was used
+to generate the restart in the first place.
+
+```python
+import pyale
+
+params = {
+    "NIGLOBAL": 160,
+    "NJGLOBAL": 800,
+    "GRID_CONFIG": "mercator",
+    "ISOTROPIC": True,
+    "SOUTHLAT": -70.275597151116,
+    "LENLAT": 140.5511943022,
+    "LENLON": 40,
+    "TOPO_CONFIG": "file",
+    "TOPO_VARNAME": "topog",
+    "MAXIMUM_DEPTH": 4000.0,
+    "NK": 75,
+}
+cs = pyale.mom_init_cs(params)
+pyale.load_mom_restart(cs, "MOM.res.nc")
+zstar_cs = pyale.mom_init_regrid(cs, params, "ZSTAR")
+h_new = pyale.do_regrid(cs, zstar_cs)
+```
+
+## Available regridding schemes
+It's possible to create multiple regridding control structures using
+`mom_init_regrid`. Here are the possible schemes:
+
+- `ZSTAR`, the *stretch geopotential* coordinate
+- `SIGMA`, the *terrain following* coordinate
+- `SIGMA_SHELF_ZSTAR`, a hybrid of *ZSTAR* and *SIGMA* (for ice shelf cavities)
+- `RHO`, the *continuous isopycnal* coordinate
+- `HYCOM1`, the *HyCOM-like* coordinate
+- `HYBGEN`, the *HyCOM hybgen* coordinate
+- `SLIGHT`, the *SLight* coordinte (stretched coordinate above continuous isopycnal
+- `ADAPTIVE`, the *AG* coordinate
