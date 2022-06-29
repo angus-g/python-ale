@@ -1,1 +1,1 @@
-from . import pyale as pyale_wrapper
+from ._pyale import *

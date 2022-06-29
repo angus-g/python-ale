@@ -107,13 +107,13 @@ static PyMethodDef PyaleMethods[] = {
 
 static struct PyModuleDef pyalemodule = {
   PyModuleDef_HEAD_INIT,
-  "pyale",
-  NULL, // module documentation
+  "_pyale",
+  "pyale extension module", // module documentation
   -1, // size of per-interpreter state
   PyaleMethods
 };
 
-PyMODINIT_FUNC PyInit_pyale(void) {
+PyMODINIT_FUNC PyInit__pyale(void) {
   import_array();
   return PyModule_Create(&pyalemodule);
 }

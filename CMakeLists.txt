@@ -151,9 +151,9 @@ target_link_libraries(MOM6
   $<TARGET_NAME_IF_EXISTS:netCDF::netcdff>
   $<TARGET_NAME_IF_EXISTS:PkgConfig::netCDF>)
 
-Python_add_library(pyale MODULE WITH_SOABI
+Python_add_library(_pyale MODULE WITH_SOABI
   pyalemodule.c
   pyale_mod.F90
   pyale_interop.F90
 )
-target_link_libraries(pyale PRIVATE MOM6 Python::NumPy)
+target_link_libraries(_pyale PRIVATE MOM6 Python::NumPy)

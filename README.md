@@ -26,11 +26,4 @@ from MOM6, we implement our own *infra* layer, consisting of *shims*
 for a lot of the parallel- and diagnostic-related functionality. We
 can then build an FMS-independent MOM6 shared library, which we link
 against a small driver module that initialises the minimum control
-structures necessary to access ALE. This driver is wrapped with a
-combination of [F2PY] and [f90wrap] to generate a Python-compatible
-interface. On top of that, there is a higher-level Python layer to
-further abstract away some of the details of interacting with the
-wrapper.
-
-[F2PY]: https://numpy.org/doc/stable/f2py/index.html
-[f90wrap]: https://github.com/jameskermode/f90wrap
+structures necessary to access ALE.

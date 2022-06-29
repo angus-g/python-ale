@@ -24,7 +24,7 @@ class CMakeBuild(build_ext):
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
         cmake_args = [
-            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}/pyale",
             f"-DCMAKE_BUILD_TYPE={cfg}",
             "-DCMAKE_INSTALL_RPATH=$ORIGIN",
         ]
@@ -54,6 +54,5 @@ class CMakeBuild(build_ext):
 setup(
     ext_modules=[CMakeExtension("pyale")],
     packages=["pyale"],
-    cmdclass=dict(build_ext=CMakeBuild),
-    zip_safe=False,
+    cmdclass={"build_ext": CMakeBuild},
 )

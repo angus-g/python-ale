@@ -3,7 +3,6 @@ requires = [
   "setuptools",
   "wheel",
   "numpy",
-  "f90wrap",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -16,4 +15,4 @@ version = "0.0.1"
 authors = [
   {name = "Angus Gibson", email = "angus@agibson.me"}
 ]
-dependencies = ["numpy", "f90wrap"]
+dependencies = ["numpy"]
