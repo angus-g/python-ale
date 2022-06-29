@@ -8,14 +8,8 @@ if (NOT netCDF_FOUND)
   include(FindPkgConfig)
   pkg_check_modules(netCDF REQUIRED IMPORTED_TARGET "netcdf-fortran")
 endif()
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development NumPy)
-
-execute_process(
-  COMMAND "${Python3_EXECUTABLE}"
-  -c "import numpy.f2py; print(numpy.f2py.get_include())"
-  OUTPUT_VARIABLE F2PY_INCLUDE_DIR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+find_package(Python 3.8 REQUIRED
+  COMPONENTS Interpreter Development.Module NumPy)
 
 option(SYMMETRIC "Use symmetric memory" ON)
 if(SYMMETRIC)
@@ -152,21 +146,14 @@ set(MOM_inc
 
 add_library(MOM6 SHARED ${MOM_src} ${shim_src})
 target_include_directories(MOM6 PRIVATE ${MOM_inc})
-target_include_directories(MOM6 PUBLIC ${Python3_INCLUDE_DIRS})
+target_include_directories(MOM6 PUBLIC ${Python_INCLUDE_DIRS})
 target_link_libraries(MOM6
   $<TARGET_NAME_IF_EXISTS:netCDF::netcdff>
   $<TARGET_NAME_IF_EXISTS:PkgConfig::netCDF>)
 
-add_library(pyale SHARED
+Python_add_library(pyale MODULE WITH_SOABI
   pyalemodule.c
   pyale_mod.F90
   pyale_interop.F90
 )
-
-target_link_libraries(pyale MOM6)
-target_include_directories(pyale PUBLIC
-  ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} ${F2PY_INCLUDE_DIR})
-set_target_properties(pyale
-  PROPERTIES
-  PREFIX ""
-  LINKER_LANGUAGE Fortran)
+target_link_libraries(pyale PRIVATE MOM6 Python::NumPy)
