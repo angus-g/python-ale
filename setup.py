@@ -53,6 +53,7 @@ class CMakeBuild(build_ext):
 
 setup(
     ext_modules=[CMakeExtension("pyale")],
+    package_dir={"": "src"},
     packages=["pyale"],
     cmdclass={"build_ext": CMakeBuild},
 )

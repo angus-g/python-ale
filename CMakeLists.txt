@@ -123,22 +123,22 @@ set(MOM_src
 )
 
 set(shim_src
-  shims/MOM_coms_infra.F90
-  shims/MOM_couplertype_infra.F90
-  shims/MOM_cpu_clock_infra.F90
-  shims/MOM_diag_manager_infra.F90
-  shims/MOM_domain_infra.F90
-  shims/MOM_ensemble_manager_infra.F90
-  shims/MOM_error_infra.F90
-  shims/MOM_io_infra.F90
-  shims/MOM_time_manager.F90
+  src/shims/MOM_coms_infra.F90
+  src/shims/MOM_couplertype_infra.F90
+  src/shims/MOM_cpu_clock_infra.F90
+  src/shims/MOM_diag_manager_infra.F90
+  src/shims/MOM_domain_infra.F90
+  src/shims/MOM_ensemble_manager_infra.F90
+  src/shims/MOM_error_infra.F90
+  src/shims/MOM_io_infra.F90
+  src/shims/MOM_time_manager.F90
 
-  shims/MOM_file_parser.F90
-  shims/get_params.c
+  src/shims/MOM_file_parser.F90
+  src/shims/get_params.c
 
   # shimming regular modules which we don't need
-  shims/MOM_open_boundary.F90
-  shims/user_initialization.F90
+  src/shims/MOM_open_boundary.F90
+  src/shims/user_initialization.F90
 )
 
 set(MOM_inc
@@ -152,8 +152,8 @@ target_link_libraries(MOM6
   $<TARGET_NAME_IF_EXISTS:PkgConfig::netCDF>)
 
 Python_add_library(_pyale MODULE WITH_SOABI
-  pyalemodule.c
-  pyale_mod.F90
-  pyale_interop.F90
+  src/pyalemodule.c
+  src/pyale_mod.F90
+  src/pyale_interop.F90
 )
 target_link_libraries(_pyale PRIVATE MOM6 Python::NumPy)
