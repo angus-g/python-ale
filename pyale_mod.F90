@@ -98,13 +98,16 @@ contains
     type(regridding_CS), intent(in) :: regrid_CS
     real, dimension(:,:,:), intent(out) :: h_new
 
-    integer :: isd, ied, jsd, jed, nk
+    integer :: isc, iec, jsc, jec
     real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke + 1) :: dz_regrid
+    real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke) :: h_new_full
 
-    isd = CS%HI%isd ; ied = CS%HI%ied ; jsd = CS%HI%jsd ; jed = CS%HI%jed ; nk=CS%GV%ke
+    isc = CS%HI%isc ; iec = CS%HI%iec ; jsc = CS%HI%jsc ; jec = CS%HI%jec
 
-    call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new, &
+    call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new_full, &
          dz_regrid, conv_adjust=.false.)
+
+    h_new(:,:,:) = h_new_full(isc:iec,jsc:jec,:)
 
   end subroutine do_regrid
 

@@ -1,5 +1,7 @@
 #define PY_SSIZE_T_CLEAN
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
+#include <numpy/ndarrayobject.h>
 
 #include <stdio.h>
 
@@ -8,6 +10,8 @@ extern void load_mom_restart(void*, char*, int);
 extern void init_mom_ale(void*, void*, PyObject*, char*, int);
 extern void destroy_mom_state(void*);
 extern void destroy_mom_ale(void*);
+extern void get_domain_dims(void*, int*, int*, int*);
+extern void do_mom_regrid(void*, void*, double*, int, int, int);
 
 static void pyale_destroy_cs(PyObject *capsule) {
   void *cs = PyCapsule_GetPointer(capsule, "MOM6 CS");
@@ -70,10 +74,34 @@ static PyObject *pyale_load_restart(PyObject *self, PyObject *args) {
   Py_RETURN_NONE;
 }
 
+static PyObject *pyale_do_regrid(PyObject *self, PyObject *args) {
+  void *cs, *regrid_cs;
+  int ok;
+  PyObject *cs_ptr, *regrid_ptr;
+  int ni, nj, nk;
+  npy_intp dims[3];
+
+  ok = PyArg_ParseTuple(args, "O!O!", &PyCapsule_Type, &cs_ptr, &PyCapsule_Type, &regrid_ptr);
+  if (!ok)
+    return NULL;
+
+  cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
+  regrid_cs = PyCapsule_GetPointer(regrid_ptr, "MOM6 ALE CS");
+  // allocate h_new array of the right size
+  get_domain_dims(cs, &ni, &nj, &nk);
+  dims[0] = ni; dims[1] = nj; dims[2] = nk;
+  PyObject *h_new = PyArray_New(&PyArray_Type, 3, dims, NPY_DOUBLE, NULL, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+
+  do_mom_regrid(cs, regrid_cs, (double*)PyArray_DATA((PyArrayObject*)h_new), ni, nj, nk);
+
+  return h_new;
+}
+
 static PyMethodDef PyaleMethods[] = {
   {"mom_init_cs", pyale_init_cs, METH_VARARGS, "Initialise a MOM CS."},
   {"load_mom_restart", pyale_load_restart, METH_VARARGS, "Load a MOM restart."},
   {"mom_init_regrid", pyale_init_regrid, METH_VARARGS, "Initialise MOM regridding."},
+  {"do_regrid", pyale_do_regrid, METH_VARARGS, "Perform MOM regridding."},
   {NULL, NULL, 0, NULL},
 };
 
@@ -86,5 +114,6 @@ static struct PyModuleDef pyalemodule = {
 };
 
 PyMODINIT_FUNC PyInit_pyale(void) {
+  import_array();
   return PyModule_Create(&pyalemodule);
 }

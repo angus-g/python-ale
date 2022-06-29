@@ -52,6 +52,38 @@ subroutine init_MOM_ale(CS, regrid_CS, params, cscheme, schemelen) bind(C)
   regrid_CS = c_loc(rCS)
 end subroutine init_MOM_ale
 
+subroutine get_domain_dims(CS, ni, nj, nk) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : MOM_state_type
+  implicit none
+
+  type(c_ptr), intent(in), value :: CS
+  integer(c_int), intent(out) :: ni, nj, nk
+  type(MOM_state_type), pointer :: fCS
+
+  call c_f_pointer(CS, fCS)
+  ni = fCS%HI%iec - fCS%HI%isc + 1
+  nj = fCS%HI%jec - fCS%HI%jsc + 1
+  nk = fCS%GV%ke
+end subroutine get_domain_dims
+
+subroutine do_MOM_regrid(CS, regrid_CS, h_new, ni, nj, nk) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : MOM_state_type, regridding_CS, f => do_regrid
+  implicit none
+
+  type(c_ptr), intent(in), value :: CS, regrid_CS
+  integer(c_int), intent(in), value :: ni, nj, nk
+  real(c_double), intent(inout), dimension(ni,nj,nk) :: h_new
+  type(MOM_state_type), pointer :: fCS
+  type(regridding_CS), pointer :: rCS
+
+  call c_f_pointer(CS, fCS)
+  call c_f_pointer(regrid_CS, rCS)
+
+  call f(fCS, rCS, h_new)
+end subroutine do_MOM_regrid
+
 subroutine destroy_MOM_state(CS) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, f => destroy_MOM_state
