@@ -4,14 +4,16 @@
 #include <numpy/ndarrayobject.h>
 
 #include <stdio.h>
+#include <stdbool.h>
 
-extern void init_mom_state(void*, PyObject*);
-extern void load_mom_restart(void*, char*, int);
+extern bool init_mom_state(void*, PyObject*);
+extern bool load_mom_restart(void*, char*, int);
 extern void init_mom_ale(void*, void*, PyObject*, char*, int);
 extern void destroy_mom_state(void*);
 extern void destroy_mom_ale(void*);
 extern void get_domain_dims(void*, int*, int*, int*);
 extern void do_mom_regrid(void*, void*, double*, int, int, int);
+extern void clear_mom_error();
 
 static void pyale_destroy_cs(PyObject *capsule) {
   void *cs = PyCapsule_GetPointer(capsule, "MOM6 CS");
@@ -33,7 +35,12 @@ static PyObject *pyale_init_cs(PyObject *self, PyObject *args) {
   if (!ok)
     return NULL;
 
-  init_mom_state(&cs, param_dict);
+  if (!init_mom_state(&cs, param_dict)) {
+    clear_mom_error();
+    PyErr_SetString(PyExc_RuntimeError, "Error initialising MOM state");
+    return NULL;
+  }
+
   PyObject *cs_ptr = PyCapsule_New(cs, "MOM6 CS", pyale_destroy_cs);
   return cs_ptr;
 }
@@ -69,7 +76,11 @@ static PyObject *pyale_load_restart(PyObject *self, PyObject *args) {
 
   cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
 
-  load_mom_restart(cs, restart_buf, (int)buf_len);
+  if (!load_mom_restart(cs, restart_buf, (int)buf_len)) {
+    clear_mom_error();
+    PyErr_SetString(PyExc_RuntimeError, "Error loading restart");
+    return NULL;
+  }
 
   Py_RETURN_NONE;
 }

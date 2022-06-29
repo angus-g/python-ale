@@ -1,18 +1,21 @@
-subroutine init_MOM_state(CS, params) bind(C)
+function init_MOM_state(CS, params) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, f => init_MOM_state
   implicit none
 
   type(c_ptr), intent(inout) :: CS
   type(c_ptr), intent(in), value :: params
+  logical(c_bool) :: init_MOM_state
   type(MOM_state_type), pointer :: fCS
 
-  allocate(fCS)
-  call f(fCS, params)
-  CS = c_loc(fCS)
-end subroutine init_MOM_state
+  CS = c_null_ptr
 
-subroutine load_MOM_restart(CS, cpath, pathlen) bind(C)
+  allocate(fCS)
+  init_MOM_state = f(fCS, params)
+  if (init_MOM_state) CS = c_loc(fCS)
+end function init_MOM_state
+
+function load_MOM_restart(CS, cpath, pathlen) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, f => load_MOM_restart
   implicit none
@@ -20,6 +23,7 @@ subroutine load_MOM_restart(CS, cpath, pathlen) bind(C)
   type(c_ptr), intent(in), value :: CS
   character(kind=c_char), dimension(*) :: cpath
   integer(c_int), intent(in), value :: pathlen
+  logical(c_bool) :: load_MOM_restart
 
   character(len=pathlen) :: path
   type(MOM_state_type), pointer :: fCS
@@ -28,8 +32,8 @@ subroutine load_MOM_restart(CS, cpath, pathlen) bind(C)
   forall (i = 1:pathlen) path(i:i) = cpath(i)
   call c_f_pointer(CS, fCS)
 
-  call f(fCS, path)
-end subroutine load_MOM_restart
+  load_MOM_restart = f(fCS, path)
+end function load_MOM_restart
 
 subroutine init_MOM_ale(CS, regrid_CS, params, cscheme, schemelen) bind(C)
   use, intrinsic :: iso_c_binding
@@ -114,3 +118,10 @@ subroutine destroy_MOM_ale(CS) bind(C)
   end if
   CS = c_null_ptr
 end subroutine destroy_MOM_ale
+
+subroutine clear_MOM_error() bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : clear_error
+
+  call clear_error()
+end subroutine clear_MOM_error

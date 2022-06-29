@@ -3,6 +3,7 @@ module MOM_io_infra
   use, intrinsic :: iso_fortran_env, only : int64
   use MOM_domain_infra, only : MOM_domain_type, domain1D, domain2d, get_domain_extent
   use MOM_domain_infra, only : CENTER, CORNER, NORTH_FACE, EAST_FACE
+  use MOM_error_infra, only : MOM_err, FATAL
   use netcdf
 
   implicit none ; private
@@ -64,14 +65,18 @@ module MOM_io_infra
 
 contains
 
-  subroutine check_netcdf_err(err, msg)
+  function check_netcdf_err(err, msg)
     integer, intent(in) :: err
     character(len=*), intent(in) :: msg
+    logical :: check_netcdf_err
+
+    check_netcdf_err = .false.
 
     if (err .ne. nf90_noerr) then
-      print *, trim(msg), ": ", trim(nf90_strerror(err))
+      check_netcdf_err = .true.
+      call MOM_err(FATAL, trim(msg)//": "//trim(nf90_strerror(err)))
     end if
-  end subroutine check_netcdf_err
+  end function check_netcdf_err
 
   function FMS_file_exists(filename)
     character(len=*), intent(in) :: filename
@@ -374,24 +379,28 @@ contains
 
     integer :: err, ncid, varid
     integer :: isc, iec, jsc, jec, isd, ied, jsd, jed
+    logical :: had_error
 
     err = nf90_open(trim(filename), nf90_nowrite, ncid)
-    call check_netcdf_err(err, "read_field_2d open")
+    if (check_netcdf_err(err, "read_field_2d open")) return
 
     err = nf90_inq_varid(ncid, trim(fieldname), varid)
-    call check_netcdf_err(err, "read_field_2d inq_varid")
+    if (check_netcdf_err(err, "read_field_2d inq_varid")) then
+      err = nf90_close(ncid)
+      return
+    end if
 
     if (present(MOM_domain)) then
       call get_domain_extent(MOM_domain, isc, iec, jsc, jec, isd, ied, jsd, jed)
       err = nf90_get_var(ncid, varid, data(isc:iec,jsc:jec))
-      call check_netcdf_err(err, "read_field_2d get_var")
+      had_error = check_netcdf_err(err, "read_field_2d get_var")
     else
       err = nf90_get_var(ncid, varid, data)
-      call check_netcdf_err(err, "read_field_2d get_var")
+      had_error = check_netcdf_err(err, "read_field_2d get_var")
     end if
 
     err = nf90_close(ncid)
-    call check_netcdf_err(err, "read_field_2d close")
+    had_error = check_netcdf_err(err, "read_field_2d close")
   end subroutine read_field_2d
 
   subroutine read_field_2d_region(filename, fieldname, data, start, nread, MOM_domain, &
@@ -417,24 +426,28 @@ contains
 
     integer :: err, ncid, varid
     integer :: isc, iec, jsc, jec, isd, ied, jsd, jed
+    logical :: had_error
 
     err = nf90_open(trim(filename), nf90_nowrite, ncid)
-    call check_netcdf_err(err, "read_field_3d open")
+    if (check_netcdf_err(err, "read_field_3d open")) return
 
     err = nf90_inq_varid(ncid, trim(fieldname), varid)
-    call check_netcdf_err(err, "read_field_3d inq_varid")
+    if (check_netcdf_err(err, "read_field_3d inq_varid")) then
+      err = nf90_close(ncid)
+      return
+    end if
 
     if (present(MOM_domain)) then
       call get_domain_extent(MOM_domain, isc, iec, jsc, jec, isd, ied, jsd, jed)
       err = nf90_get_var(ncid, varid, data(isc:iec,jsc:jec,:))
-      call check_netcdf_err(err, "read_field_3d get_var")
+      had_error = check_netcdf_err(err, "read_field_3d get_var")
     else
       err = nf90_get_var(ncid, varid, data)
-      call check_netcdf_err(err, "read_field_3d get_var")
+      had_error = check_netcdf_err(err, "read_field_3d get_var")
     end if
 
     err = nf90_close(ncid)
-    call check_netcdf_err(err, "read_field_3d close")
+    had_error = check_netcdf_err(err, "read_field_3d close")
   end subroutine read_field_3d
 
   subroutine read_field_4d(filename, fieldname, data, MOM_domain, timelevel, &
