@@ -116,9 +116,9 @@ contains
   subroutine domain_size(CS, dims)
     type(MOM_state_type), intent(in) :: CS
     integer, dimension(3), intent(out) :: dims
-    integer :: isd, ied, jsd, jed, nk
-    isd = CS%HI%isd ; ied = CS%HI%ied ; jsd = CS%HI%jsd ; jed = CS%HI%jed ; nk=CS%GV%ke
-    dims = [ied - isd + 1, jed - jsd + 1, nk]
+    integer :: isc, iec, jsc, jec, nk
+    isc = CS%HI%isc ; iec = CS%HI%iec ; jsc = CS%HI%jsc ; jec = CS%HI%jec ; nk = CS%GV%ke
+    dims = [iec - isc + 1, jec - jsc + 1, nk]
   end subroutine domain_size
 
   function do_regrid(CS, regrid_CS, h_new)
