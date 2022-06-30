@@ -82,8 +82,7 @@ contains
     character(len=*), intent(in) :: filename
     logical :: FMS_file_exists
 
-    print *, "FMS_file_exists? ", filename
-    FMS_file_exists = .false.
+    inquire(file=trim(filename), exist=FMS_file_exists)
   end function FMS_file_exists
 
   function MOM_file_exists(filename, MOM_domain)
@@ -263,8 +262,15 @@ contains
     type(MOM_domain_type), optional, intent(in) :: MOM_domain
     logical :: field_exists
 
-    print *, "field_exists", filename, fieldname
-    field_exists = .false.
+    integer :: err, ncid, varid
+
+    err = nf90_open(trim(filename), nf90_nowrite, ncid)
+    if (check_netcdf_err(err, "field_exists open")) return
+
+    err = nf90_inq_varid(ncid, trim(fieldname), varid)
+    field_exists = (err == nf90_noerr)
+
+    err = nf90_close(ncid)
   end function field_exists
 
   subroutine get_field_atts(field, name, units, longname, checksum)
@@ -365,7 +371,23 @@ contains
     type(MOM_domain_type), optional, intent(in) :: MOM_domain
     logical, optional, intent(in) :: global_file, file_may_be_4d
 
-    print *, "read_field_1d", filename, fieldname
+    integer :: err, ncid, varid
+    logical :: had_error
+
+    err = nf90_open(trim(filename), nf90_nowrite, ncid)
+    if (check_netcdf_err(err, "read_field_1d open")) return
+
+    err = nf90_inq_varid(ncid, trim(fieldname), varid)
+    if (check_netcdf_err(err, "read_field_1d inq_varid")) then
+      err = nf90_close(ncid)
+      return
+    end if
+
+    err = nf90_get_var(ncid, varid, data(:))
+    had_error = check_netcdf_err(err, "read_field_1d get_var")
+
+    err = nf90_close(ncid)
+    had_error = check_netcdf_err(err, "read_field_1d close")
   end subroutine read_field_1d
 
   subroutine read_field_2d(filename, fieldname, data, MOM_domain, timelevel, &

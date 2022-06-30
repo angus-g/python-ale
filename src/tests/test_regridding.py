@@ -27,18 +27,18 @@ def cs():
 
     return cs
 
-schemes = (
-    "ZSTAR",
-    "SIGMA",
-    "RHO",
-    "HYCOM1",
-    "HYBGEN",
-    "SLIGHT",
-    "ADAPTIVE",
-)
+schemes = [
+    ("ZSTAR", {"ALE_COORDINATE_CONFIG": "UNIFORM"}),
+    ("SIGMA", {"ALE_COORDINATE_CONFIG": "UNIFORM"}),
+    ("RHO", {"ALE_COORDINATE_CONFIG": "RFNC1:35,999.5,1028,1028.5,8.,1038.,0.0078125"}),
+    ("HYCOM1", {"ALE_COORDINATE_CONFIG": "HYBRID:hycom1_75_800m.nc,sigma2,FNC1:2,4000,4.5,.01"}),
+    ("HYBGEN", {"ALE_COORDINATE_CONFIG": "HYBRID:hycom1_75_800m.nc,sigma2,FNC1:2,4000,4.5,.01"}),
+    ("SLIGHT", {"ALE_COORDINATE_CONFIG": "HYBRID:hycom1_75_800m.nc,sigma2,FNC1:2,4000,4.5,.01"}),
+    ("ADAPTIVE", {"ALE_COORDINATE_CONFIG": "UNIFORM"}),
+]
 
-@pytest.mark.parametrize("scheme", schemes)
-def test_regrid(cs, scheme):
-    params = {}
+@pytest.mark.parametrize("scheme,params", schemes)
+def test_regrid(cs, scheme, params):
+    params["INPUTDIR"] = str(FIXTURE_DIR)
     regrid_cs = pyale.mom_init_regrid(cs, params, scheme)
     h_new = pyale.do_regrid(cs, regrid_cs)

@@ -12,7 +12,7 @@ extern void init_mom_ale(void*, void*, PyObject*, char*, int);
 extern void destroy_mom_state(void*);
 extern void destroy_mom_ale(void*);
 extern void get_domain_dims(void*, int*, int*, int*);
-extern void do_mom_regrid(void*, void*, double*, int, int, int);
+extern bool do_mom_regrid(void*, void*, double*, int, int, int);
 extern void clear_mom_error();
 
 static void pyale_destroy_cs(PyObject *capsule) {
@@ -103,7 +103,13 @@ static PyObject *pyale_do_regrid(PyObject *self, PyObject *args) {
   dims[0] = ni; dims[1] = nj; dims[2] = nk;
   PyObject *h_new = PyArray_New(&PyArray_Type, 3, dims, NPY_DOUBLE, NULL, NULL, 0, NPY_ARRAY_FARRAY, NULL);
 
-  do_mom_regrid(cs, regrid_cs, (double*)PyArray_DATA((PyArrayObject*)h_new), ni, nj, nk);
+  if (!do_mom_regrid(cs, regrid_cs, (double*)PyArray_DATA((PyArrayObject*)h_new), ni, nj, nk)) {
+    clear_mom_error();
+    PyErr_SetString(PyExc_RuntimeError, "Error running regridding");
+    Py_DECREF(h_new);
+
+    return NULL;
+  }
 
   return h_new;
 }

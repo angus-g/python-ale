@@ -121,23 +121,27 @@ contains
     dims = [ied - isd + 1, jed - jsd + 1, nk]
   end subroutine domain_size
 
-  subroutine do_regrid(CS, regrid_CS, h_new)
+  function do_regrid(CS, regrid_CS, h_new)
     type(MOM_state_type), intent(in) :: CS
     type(regridding_CS), intent(in) :: regrid_CS
     real, dimension(:,:,:), intent(out) :: h_new
+    logical :: do_regrid
 
     integer :: isc, iec, jsc, jec
     real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke + 1) :: dz_regrid
     real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke) :: h_new_full
 
+    do_regrid = .false.
+
     isc = CS%HI%isc ; iec = CS%HI%iec ; jsc = CS%HI%jsc ; jec = CS%HI%jec
 
     call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new_full, &
          dz_regrid, conv_adjust=.false.)
+    if (check_error("regridding_main")) return
 
     h_new(:,:,:) = h_new_full(isc:iec,jsc:jec,:)
-
-  end subroutine do_regrid
+    do_regrid = .true.
+  end function do_regrid
 
   subroutine destroy_MOM_state(CS)
     type(MOM_state_type), intent(inout) :: CS
