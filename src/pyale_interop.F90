@@ -89,6 +89,23 @@ function do_MOM_regrid(CS, regrid_CS, h_new, ni, nj, nk) bind(C)
   do_MOM_regrid = f(fCS, rCS, h_new)
 end function do_MOM_regrid
 
+function do_MOM_remap(CS, h_new, temp_new, salt_new, ni, nj, nk) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : MOM_state_type, f => do_remap
+  implicit none
+
+  type(c_ptr), intent(in), value :: CS
+  integer(c_int), intent(in), value :: ni, nj, nk
+  real(c_double), intent(in), dimension(ni,nj,nk) :: h_new
+  real(c_double), intent(inout), dimension(ni,nj,nk) :: temp_new, salt_new
+  logical(c_bool) :: do_MOM_remap
+  type(MOM_state_type), pointer :: fCS
+
+  call c_f_pointer(CS, fCS)
+
+  do_MOM_remap = f(fCS, h_new, temp_new, salt_new)
+end function do_MOM_remap
+
 subroutine destroy_MOM_state(CS) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, f => destroy_MOM_state
