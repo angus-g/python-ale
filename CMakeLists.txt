@@ -118,8 +118,6 @@ set(MOM_src
   mom6/src/initialization/MOM_fixed_initialization.F90
   mom6/src/initialization/MOM_grid_initialize.F90
   mom6/src/initialization/MOM_shared_initialization.F90
-
-  mom6/src/tracer/MOM_tracer_registry.F90
 )
 
 set(shim_src
@@ -138,6 +136,7 @@ set(shim_src
 
   # shimming regular modules which we don't need
   src/shims/MOM_open_boundary.F90
+  src/shims/MOM_tracer_types.F90
   src/shims/user_initialization.F90
 )
 

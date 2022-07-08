@@ -5,7 +5,7 @@ module MOM_coms_infra
   implicit none ; private
 
   public :: PE_here, root_PE, set_rootPE, set_PElist, get_PElist
-  public :: num_PEs, all_across_PEs, any_across_PEs
+  public :: sync_PEs, num_PEs, all_across_PEs, any_across_PEs
   public :: sum_across_PEs, max_across_PEs, min_across_PEs
   public :: broadcast, field_chksum
   public :: MOM_infra_init, MOM_infra_end
@@ -74,6 +74,12 @@ contains
 
     print *, 'get_PElist'
   end subroutine get_PElist
+
+  subroutine sync_PEs(pelist)
+    integer, optional, intent(in) :: pelist(:)
+
+    print *, 'sync_PEs'
+  end subroutine sync_PEs
 
   function num_PEs() result(npes)
     integer :: npes
