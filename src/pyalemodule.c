@@ -135,8 +135,8 @@ static PyObject *pyale_do_remap(PyObject *self, PyObject *args) {
   if (!h_new) return NULL;
 
   // check that h_new is the right size for the domain
-  in_dims = PyArray_DIMS(h_new);
-  if (PyArray_NDIM(h_new) != 3 || in_dims[0] != dims[0] || in_dims[1] != dims[1] || in_dims[2] != dims[2]) {
+  in_dims = PyArray_DIMS((PyArrayObject*)h_new);
+  if (PyArray_NDIM((PyArrayObject*)h_new) != 3 || in_dims[0] != dims[0] || in_dims[1] != dims[1] || in_dims[2] != dims[2]) {
     PyErr_SetString(PyExc_ValueError, "h_new dims don't conform to domain");
     Py_DECREF(h_new);
     return NULL;
