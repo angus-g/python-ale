@@ -106,6 +106,7 @@ set(MOM_src
   mom6/src/equation_of_state/TEOS10/gsw_rho.f90
   mom6/src/equation_of_state/TEOS10/gsw_rho_first_derivatives.f90
   mom6/src/equation_of_state/TEOS10/gsw_rho_second_derivatives.f90
+  mom6/src/equation_of_state/TEOS10/gsw_sp_from_sr.f90
   mom6/src/equation_of_state/TEOS10/gsw_specvol.f90
   mom6/src/equation_of_state/TEOS10/gsw_specvol_first_derivatives.f90
   mom6/src/equation_of_state/TEOS10/gsw_specvol_second_derivatives.f90
