@@ -11,7 +11,7 @@ module pyale_mod
   use MOM_hor_index, only : hor_index_init, hor_index_type
   use MOM_io, only : MOM_read_data
   use MOM_open_boundary, only : ocean_OBC_type
-  use MOM_regridding, only : initialize_regridding, regridding_main, regridding_CS
+  use MOM_regridding, only : initialize_regridding, regridding_main, regridding_CS, set_regrid_params
   use MOM_remapping, only : initialize_remapping, remapping_core_h, remapping_CS
   use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
   use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
@@ -21,7 +21,7 @@ module pyale_mod
   implicit none ; private
 
   public :: init_MOM_state, load_MOM_restart, init_MOM_ALE, destroy_MOM_state
-  public :: do_regrid, do_remap, domain_size
+  public :: do_regrid, do_accelerate, do_remap, domain_size
   public :: regridding_CS, clear_error
 
   type, public :: MOM_state_type
@@ -38,6 +38,8 @@ module pyale_mod
     real, dimension(:,:,:), pointer :: h => NULL()
     real, dimension(:,:,:), pointer :: T => NULL()
     real, dimension(:,:,:), pointer :: S => NULL()
+
+    real :: regrid_time_scale
   end type MOM_state_type
 
 contains
@@ -78,6 +80,7 @@ contains
     allocate(CS%tv%eqn_of_state)
     call EOS_init(CS%param_file, CS%tv%eqn_of_state, CS%US)
 
+    call get_param(CS%param_file, "", "REGRID_TIME_SCALE", CS%regrid_time_scale, "", default=0., scale=CS%US%s_to_T)
     call get_param(CS%param_file, "", "REMAPPING_SCHEME", param_string, "", default="PLM")
     call initialize_remapping(CS%remap_CS, param_string)
 
@@ -124,9 +127,22 @@ contains
     dims = [iec - isc + 1, jec - jsc + 1, nk]
   end subroutine domain_size
 
+  subroutine update_regrid_weights(dt, CS, regridCS)
+    real, intent(in) :: dt
+    type(MOM_state_type), intent(in) :: CS
+    type(regridding_CS), intent(inout) :: regridCS
+    real :: w
+
+    w = 0.0
+    if (CS%regrid_time_scale > 0.0) then
+      w = CS%regrid_time_scale / (CS%regrid_time_scale + dt)
+    end if
+    call set_regrid_params(regridCS, old_grid_weight=w)
+  end subroutine update_regrid_weights
+
   function do_regrid(CS, regrid_CS, dt, h_new)
     type(MOM_state_type), intent(in) :: CS
-    type(regridding_CS), intent(in) :: regrid_CS
+    type(regridding_CS), intent(inout) :: regrid_CS
     real, intent(in) :: dt
     real, dimension(:,:,:), intent(out) :: h_new
     logical :: do_regrid
@@ -138,6 +154,7 @@ contains
     do_regrid = .false.
     isc = CS%HI%isc ; iec = CS%HI%iec ; jsc = CS%HI%jsc ; jec = CS%HI%jec
 
+    call update_regrid_weights(dt, CS, regrid_CS)
     call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new_full, &
          dz_regrid, dt=dt, conv_adjust=.false.)
     if (check_error("regridding_main")) return
@@ -145,6 +162,62 @@ contains
     h_new(:,:,:) = h_new_full(isc:iec,jsc:jec,:)
     do_regrid = .true.
   end function do_regrid
+
+  function do_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new)
+    type(MOM_state_type), intent(in) :: CS
+    type(regridding_CS), intent(inout) :: regrid_CS
+    integer, intent(in) :: iter
+    real, intent(in) :: dt
+    real, dimension(:,:,:), intent(out) :: h_new, temp_new, salt_new
+    logical :: do_accelerate
+
+    integer :: i, j, it
+    integer :: isc, iec, jsc, jec, nz
+    real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke + 1) :: dz_regrid
+    real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke) :: h_loc, h_new_full
+    real, dimension(CS%HI%isd:CS%HI%ied,CS%HI%jsd:CS%HI%jed,CS%GV%ke), target :: T_loc, S_loc
+    type(thermo_var_ptrs) :: tv_loc
+
+    isc = CS%HI%isc ; iec = CS%HI%iec ; jsc = CS%HI%jsc ; jec = CS%HI%jec ; nz = CS%GV%ke
+    do_accelerate = .false.
+
+    ! copy the original state
+    h_loc(:,:,:) = CS%h(:,:,:)
+    T_loc(:,:,:) = CS%tv%T(:,:,:)
+    S_loc(:,:,:) = CS%tv%S(:,:,:)
+    tv_loc = CS%tv
+    tv_loc%T => T_loc
+    tv_loc%S => S_loc
+
+    call update_regrid_weights(dt, CS, regrid_CS)
+
+    do it = 1, iter
+      call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, h_loc, tv_loc, h_new_full, &
+           dz_regrid, dt=dt, conv_adjust=.false.)
+      if (check_error("regridding_main")) return
+
+      do j = jsc-1,jec+1
+        do i = isc-1,iec+1
+          if (CS%G%mask2dT(i,j) == 0) cycle
+          call remapping_core_h(CS%remap_CS, &
+               nz, CS%h(i,j,:), CS%tv%S(i,j,:), &
+               nz, h_new_full(i,j,:), tv_loc%S(i,j,:))
+          call remapping_core_h(CS%remap_CS, &
+               nz, CS%h(i,j,:), CS%tv%T(i,j,:), &
+               nz, h_new_full(i,j,:), tv_loc%T(i,j,:))
+        end do
+      end do
+      if (check_error("remapping_core")) return
+
+      h_loc(:,:,:) = h_new_full(:,:,:)
+    end do
+
+    h_new(:,:,:) = h_new_full(isc:iec,jsc:jec,:)
+    temp_new(:,:,:) = tv_loc%T(isc:iec,jsc:jec,:)
+    salt_new(:,:,:) = tv_loc%S(isc:iec,jsc:jec,:)
+
+    do_accelerate = .true.
+  end function do_accelerate
 
   function do_remap(CS, h_new, temp_new, salt_new)
     type(MOM_state_type), intent(in) :: CS
