@@ -71,13 +71,14 @@ subroutine get_domain_dims(CS, ni, nj, nk) bind(C)
   nk = fCS%GV%ke
 end subroutine get_domain_dims
 
-function do_MOM_regrid(CS, regrid_CS, h_new, ni, nj, nk) bind(C)
+function do_MOM_regrid(CS, regrid_CS, dt, h_new, ni, nj, nk) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, regridding_CS, f => do_regrid
   implicit none
 
   type(c_ptr), intent(in), value :: CS, regrid_CS
   integer(c_int), intent(in), value :: ni, nj, nk
+  real(c_double), intent(in), value :: dt
   real(c_double), intent(inout), dimension(ni,nj,nk) :: h_new
   logical(c_bool) :: do_MOM_regrid
   type(MOM_state_type), pointer :: fCS
@@ -86,7 +87,7 @@ function do_MOM_regrid(CS, regrid_CS, h_new, ni, nj, nk) bind(C)
   call c_f_pointer(CS, fCS)
   call c_f_pointer(regrid_CS, rCS)
 
-  do_MOM_regrid = f(fCS, rCS, h_new)
+  do_MOM_regrid = f(fCS, rCS, dt, h_new)
 end function do_MOM_regrid
 
 function do_MOM_remap(CS, h_new, temp_new, salt_new, ni, nj, nk) bind(C)

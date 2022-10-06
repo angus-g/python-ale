@@ -12,7 +12,7 @@ extern void init_mom_ale(void*, void*, PyObject*, char*, int);
 extern void destroy_mom_state(void*);
 extern void destroy_mom_ale(void*);
 extern void get_domain_dims(void*, int*, int*, int*);
-extern bool do_mom_regrid(void*, void*, double*, int, int, int);
+extern bool do_mom_regrid(void*, void*, double, double*, int, int, int);
 extern bool do_mom_remap(void*, double*, double*, double*, int, int, int);
 extern void clear_mom_error();
 
@@ -86,14 +86,22 @@ static PyObject *pyale_load_restart(PyObject *self, PyObject *args) {
   Py_RETURN_NONE;
 }
 
-static PyObject *pyale_do_regrid(PyObject *self, PyObject *args) {
+static char* regrid_keywords[] = {
+  "mom_cs", "regrid_cs", "dt", NULL,
+};
+
+static PyObject *pyale_do_regrid(PyObject *self, PyObject *args, PyObject *kwargs) {
   void *cs, *regrid_cs;
   int ok;
   PyObject *cs_ptr, *regrid_ptr;
   int ni, nj, nk;
+  double dt = 0.0;
   npy_intp dims[3];
 
-  ok = PyArg_ParseTuple(args, "O!O!", &PyCapsule_Type, &cs_ptr, &PyCapsule_Type, &regrid_ptr);
+  ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!|$d", regrid_keywords,
+				   &PyCapsule_Type, &cs_ptr,
+				   &PyCapsule_Type, &regrid_ptr,
+				   &dt);
   if (!ok)
     return NULL;
 
@@ -104,7 +112,7 @@ static PyObject *pyale_do_regrid(PyObject *self, PyObject *args) {
   dims[0] = ni; dims[1] = nj; dims[2] = nk;
   PyObject *h_new = PyArray_New(&PyArray_Type, 3, dims, NPY_DOUBLE, NULL, NULL, 0, NPY_ARRAY_FARRAY, NULL);
 
-  if (!do_mom_regrid(cs, regrid_cs, (double*)PyArray_DATA((PyArrayObject*)h_new), ni, nj, nk)) {
+  if (!do_mom_regrid(cs, regrid_cs, dt, (double*)PyArray_DATA((PyArrayObject*)h_new), ni, nj, nk)) {
     clear_mom_error();
     PyErr_SetString(PyExc_RuntimeError, "Error running regridding");
     Py_DECREF(h_new);
@@ -171,7 +179,7 @@ static PyMethodDef PyaleMethods[] = {
   {"mom_init_cs", pyale_init_cs, METH_VARARGS, "Initialise a MOM CS."},
   {"load_mom_restart", pyale_load_restart, METH_VARARGS, "Load a MOM restart."},
   {"mom_init_regrid", pyale_init_regrid, METH_VARARGS, "Initialise MOM regridding."},
-  {"do_regrid", pyale_do_regrid, METH_VARARGS, "Perform MOM regridding."},
+  {"do_regrid", (PyCFunction) pyale_do_regrid, METH_VARARGS | METH_KEYWORDS, "Perform MOM regridding."},
   {"do_remap", pyale_do_remap, METH_VARARGS, "Perform MOM remapping."},
   {NULL, NULL, 0, NULL},
 };

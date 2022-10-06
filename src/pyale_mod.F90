@@ -124,9 +124,10 @@ contains
     dims = [iec - isc + 1, jec - jsc + 1, nk]
   end subroutine domain_size
 
-  function do_regrid(CS, regrid_CS, h_new)
+  function do_regrid(CS, regrid_CS, dt, h_new)
     type(MOM_state_type), intent(in) :: CS
     type(regridding_CS), intent(in) :: regrid_CS
+    real, intent(in) :: dt
     real, dimension(:,:,:), intent(out) :: h_new
     logical :: do_regrid
 
@@ -138,7 +139,7 @@ contains
     isc = CS%HI%isc ; iec = CS%HI%iec ; jsc = CS%HI%jsc ; jec = CS%HI%jec
 
     call regridding_main(CS%remap_CS, regrid_CS, CS%G, CS%GV, CS%h, CS%tv, h_new_full, &
-         dz_regrid, conv_adjust=.false.)
+         dz_regrid, dt=dt, conv_adjust=.false.)
     if (check_error("regridding_main")) return
 
     h_new(:,:,:) = h_new_full(isc:iec,jsc:jec,:)
