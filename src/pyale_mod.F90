@@ -80,6 +80,8 @@ contains
     allocate(CS%tv%eqn_of_state)
     call EOS_init(CS%param_file, CS%tv%eqn_of_state, CS%US)
 
+    call get_param(CS%param_file, "", "P_REF", CS%tv%P_ref, "", default=2e7, units="Pa", scale=CS%US%kg_m3_to_R*CS%US%m_s_to_L_T**2)
+
     call get_param(CS%param_file, "", "REGRID_TIME_SCALE", CS%regrid_time_scale, "", default=0., scale=CS%US%s_to_T)
     call get_param(CS%param_file, "", "REMAPPING_SCHEME", param_string, "", default="PLM")
     call initialize_remapping(CS%remap_CS, param_string)
