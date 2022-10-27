@@ -1,6 +1,7 @@
 module pyale_mod
   use, intrinsic :: iso_c_binding
 
+  use coord_adapt, only : adapt_diag_CS, adapt_CS, get_adapt_diag_CS, associate_adapt_diag
   use MOM_domains, only : MOM_domains_init, MOM_domain_type, clone_MOM_domain
   use MOM_dyn_horgrid, only : create_dyn_horgrid, dyn_horgrid_type
   use MOM_EOS, only : EOS_init
@@ -11,7 +12,7 @@ module pyale_mod
   use MOM_hor_index, only : hor_index_init, hor_index_type
   use MOM_io, only : MOM_read_data
   use MOM_open_boundary, only : ocean_OBC_type
-  use MOM_regridding, only : initialize_regridding, regridding_main, regridding_CS, set_regrid_params
+  use MOM_regridding, only : initialize_regridding, regridding_main, regridding_CS, set_regrid_params, get_adapt_CS
   use MOM_remapping, only : initialize_remapping, remapping_core_h, remapping_CS
   use MOM_transcribe_grid, only : copy_dyngrid_to_MOM_grid
   use MOM_unit_scaling, only : unit_no_scaling_init, unit_scale_type
@@ -21,6 +22,7 @@ module pyale_mod
   implicit none ; private
 
   public :: init_MOM_state, load_MOM_restart, init_MOM_ALE, destroy_MOM_state
+  public :: init_AG_diags, register_AG_diag, get_AG_diag
   public :: do_regrid, do_accelerate, do_remap, domain_size
   public :: regridding_CS, clear_error
 
@@ -120,6 +122,107 @@ contains
          CS%param_file, "init_MOM_state", trim(regridding_scheme), "", "")
     CS%param_file%ptr = c_null_ptr
   end subroutine init_MOM_ALE
+
+  subroutine init_AG_diags(regrid_CS)
+    type(regridding_CS), intent(in) :: regrid_CS
+    type(adapt_CS), pointer :: adapt_CS
+    type(adapt_diag_CS), pointer :: diag_CS
+
+    adapt_CS => get_adapt_CS(regrid_CS)
+    diag_CS => get_adapt_diag_CS(adapt_CS)
+    ! clean up any existing diag_CS
+    if (associated(diag_CS)) deallocate(diag_CS)
+
+    ! allocate and associate a new one
+    allocate(diag_CS)
+    call associate_adapt_diag(adapt_CS, diag_CS)
+  end subroutine init_AG_diags
+
+  subroutine register_AG_diag(CS, regrid_CS, diag)
+    type(MOM_state_type), intent(in) :: CS
+    type(regridding_CS), intent(in) :: regrid_CS
+    character(len=*), intent(in) :: diag
+    type(adapt_CS), pointer :: adapt_CS
+    type(adapt_diag_CS), pointer :: diag_CS
+
+    integer :: isd, ied, jsd, jed, isdB, iedB, jsdB, jedB, nk
+
+    isd  = CS%G%isd  ; ied  = CS%G%ied  ; jsd  = CS%G%jsd  ; jed  = CS%G%jed
+    isdB = CS%G%isdB ; iedB = CS%G%iedB ; jsdB = CS%G%jsdB ; jedB = CS%G%jedB
+    nk = CS%GV%ke
+
+    adapt_CS => get_adapt_CS(regrid_CS)
+    diag_CS => get_adapt_diag_CS(adapt_CS)
+
+    select case (diag)
+    case ("adapt_slope_u")
+      allocate(diag_CS%slope_u(isdB:iedB,jsd:jed,nk+1))
+    case ("adapt_slope_v")
+      allocate(diag_CS%slope_v(isd:ied,jsdB:jedB,nk+1))
+    case ("adapt_denom_u")
+      allocate(diag_CS%denom_u(isdB:iedB,jsd:jed,nk+1))
+    case ("adapt_denom_v")
+      allocate(diag_CS%denom_v(isd:ied,jsdB:jedB,nk+1))
+    case ("adapt_phys_u")
+      allocate(diag_CS%phys_u(isdB:iedB,jsd:jed,nk+1))
+    case ("adapt_phys_v")
+      allocate(diag_CS%phys_v(isd:ied,jsdB:jedB,nk+1))
+    case ("adapt_coord_u")
+      allocate(diag_CS%coord_u(isdB:iedB,jsd:jed,nk+1))
+    case ("adapt_coord_v")
+      allocate(diag_CS%coord_v(isd:ied,jsdB:jedB,nk+1))
+    case ("adapt_limiting_density")
+      allocate(diag_CS%limiting_density(isd:ied,jsd:jed,nk+1))
+    case ("adapt_limiting_smoothing")
+      allocate(diag_CS%limiting_smoothing(isd:ied,jsd:jed,nk+1))
+    case ("adapt_disp_density")
+      allocate(diag_CS%disp_density(isd:ied,jsd:jed,nk+1))
+    case ("adapt_disp_smoothing")
+      allocate(diag_CS%disp_smoothing(isd:ied,jsd:jed,nk+1))
+    case ("adapt_disp_unlimited")
+      allocate(diag_CS%disp_unlimited(isd:ied,jsd:jed,nk+1))
+    end select
+  end subroutine register_AG_diag
+
+  subroutine get_AG_diag(regrid_CS, diag, diag_arr)
+    type(regridding_CS), intent(in) :: regrid_CS
+    character(len=*), intent(in) :: diag
+    real, dimension(:,:,:), intent(inout) :: diag_arr
+    type(adapt_CS), pointer :: adapt_CS
+    type(adapt_diag_CS), pointer :: diag_CS
+
+    adapt_CS => get_adapt_CS(regrid_CS)
+    diag_CS => get_adapt_diag_CS(adapt_CS)
+
+    select case (diag)
+    case ("adapt_slope_u")
+      diag_arr(:,:,:) = diag_CS%slope_u(:,:,:)
+    case ("adapt_slope_v")
+      diag_arr(:,:,:) = diag_CS%slope_v(:,:,:)
+    case ("adapt_denom_u")
+      diag_arr(:,:,:) = diag_CS%denom_u(:,:,:)
+    case ("adapt_denom_v")
+      diag_arr(:,:,:) = diag_CS%denom_v(:,:,:)
+    case ("adapt_phys_u")
+      diag_arr(:,:,:) = diag_CS%phys_u(:,:,:)
+    case ("adapt_phys_v")
+      diag_arr(:,:,:) = diag_CS%phys_v(:,:,:)
+    case ("adapt_coord_u")
+      diag_arr(:,:,:) = diag_CS%coord_u(:,:,:)
+    case ("adapt_coord_v")
+      diag_arr(:,:,:) = diag_CS%coord_v(:,:,:)
+    case ("adapt_limiting_density")
+      diag_arr(:,:,:) = diag_CS%limiting_density(:,:,:)
+    case ("adapt_limiting_smoothing")
+      diag_arr(:,:,:) = diag_CS%limiting_smoothing(:,:,:)
+    case ("adapt_disp_density")
+      diag_arr(:,:,:) = diag_CS%disp_density(:,:,:)
+    case ("adapt_disp_smoothing")
+      diag_arr(:,:,:) = diag_CS%disp_smoothing(:,:,:)
+    case ("adapt_disp_unlimited")
+      diag_arr(:,:,:) = diag_CS%disp_unlimited(:,:,:)
+    end select
+end subroutine get_AG_diag
 
   subroutine domain_size(CS, dims)
     type(MOM_state_type), intent(in) :: CS

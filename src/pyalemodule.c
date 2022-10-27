@@ -9,11 +9,14 @@
 extern bool init_mom_state(void*, PyObject*);
 extern bool load_mom_restart(void*, char*, int);
 extern void init_mom_ale(void*, void*, PyObject*, char*, int);
+extern void init_ag_diags(void*, void*, const char**, int*, int);
 extern void destroy_mom_state(void*);
 extern void destroy_mom_ale(void*);
 extern void get_domain_dims(void*, int*, int*, int*);
 extern bool do_mom_regrid(void*, void*, double, double*, int, int, int);
 extern bool do_mom_accelerate(void*, void*, int, double, double*, double*, double*, int, int, int);
+extern void get_ag_diag_dims(void*, const char*, int, int*, int*, int*);
+extern void get_ag_diag_data(void*, const char*, int, double*, int, int, int);
 extern bool do_mom_remap(void*, double*, double*, double*, int, int, int);
 extern void clear_mom_error();
 
@@ -87,27 +90,69 @@ static PyObject *pyale_load_restart(PyObject *self, PyObject *args) {
   Py_RETURN_NONE;
 }
 
+static void init_ag_diags_from_list(void *cs, void *regrid_cs, PyObject *diag_list) {
+  Py_ssize_t num_diags = PyList_Size(diag_list);
+  const char *diag_strs[num_diags];
+  int diag_lens[num_diags];
+
+  for (Py_ssize_t i = 0; i < num_diags; i++) {
+    PyObject *diag_str = PyList_GetItem(diag_list, i);
+    diag_strs[i] = PyUnicode_AsUTF8(diag_str);
+    diag_lens[i] = PyUnicode_GET_LENGTH(diag_str);
+  }
+
+  init_ag_diags(cs, regrid_cs, diag_strs, diag_lens, num_diags);
+}
+
+static PyObject *ag_diag_dict(void *cs, void *regrid_cs, PyObject *diag_list) {
+  int ni, nj, nk;
+  npy_intp dims[3];
+
+  Py_ssize_t num_diags = PyList_Size(diag_list);
+  PyObject *diag_dict = PyDict_New();
+
+  for (Py_ssize_t i = 0; i < num_diags; i++) {
+    PyObject *diag_str = PyList_GetItem(diag_list, i);
+    const char *diag = PyUnicode_AsUTF8(diag_str);
+    int len = PyUnicode_GET_LENGTH(diag_str);
+
+    get_ag_diag_dims(cs, diag, len, &ni, &nj, &nk);
+    dims[0] = ni; dims[1] = nj; dims[2] = nk;
+    PyObject *diag_arr = PyArray_New(&PyArray_Type, 3, dims, NPY_DOUBLE, NULL, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    get_ag_diag_data(regrid_cs, diag, len, (double*)PyArray_DATA((PyArrayObject*)diag_arr), ni, nj, nk);
+
+    PyDict_SetItem(diag_dict, diag_str, diag_arr);
+    Py_DECREF(diag_arr);
+  }
+
+  return diag_dict;
+}
+
 static char* regrid_keywords[] = {
-  "mom_cs", "regrid_cs", "dt", NULL,
+  "mom_cs", "regrid_cs", "dt", "diags", NULL,
 };
 
 static PyObject *pyale_do_regrid(PyObject *self, PyObject *args, PyObject *kwargs) {
   void *cs, *regrid_cs;
   int ok;
-  PyObject *cs_ptr, *regrid_ptr;
+  PyObject *cs_ptr, *regrid_ptr, *diag_list = NULL;
   int ni, nj, nk;
   double dt = 0.0;
   npy_intp dims[3];
 
-  ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!|$d", regrid_keywords,
+  ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!|$dO!", regrid_keywords,
 				   &PyCapsule_Type, &cs_ptr,
 				   &PyCapsule_Type, &regrid_ptr,
-				   &dt);
+				   &dt, &PyList_Type, &diag_list);
   if (!ok)
     return NULL;
 
   cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
   regrid_cs = PyCapsule_GetPointer(regrid_ptr, "MOM6 ALE CS");
+  if (diag_list) {
+    init_ag_diags_from_list(cs, regrid_cs, diag_list);
+  }
+
   // allocate h_new array of the right size
   get_domain_dims(cs, &ni, &nj, &nk);
   dims[0] = ni; dims[1] = nj; dims[2] = nk;
@@ -121,30 +166,40 @@ static PyObject *pyale_do_regrid(PyObject *self, PyObject *args, PyObject *kwarg
     return NULL;
   }
 
+  if (diag_list) {
+    return Py_BuildValue("(NN)", h_new, ag_diag_dict(cs, regrid_cs, diag_list));
+  }
+
   return h_new;
 }
 
 static char* accelerate_keywords[] = {
-  "mom_cs", "regrid_cs", "iter", "dt", NULL,
+  "mom_cs", "regrid_cs", "iter", "dt", "diags", NULL,
 };
 
 static PyObject *pyale_accelerate_ale(PyObject *self, PyObject *args, PyObject *kwargs) {
   void *cs, *regrid_cs;
   int ok;
-  PyObject *cs_ptr, *regrid_ptr;
+  PyObject *cs_ptr, *regrid_ptr, *diag_list = NULL;
   int ni, nj, nk, iter;
   double dt = 0.0;
   npy_intp dims[3];
 
-  ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!i|$d", accelerate_keywords,
+  ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!i|$dO!", accelerate_keywords,
 				   &PyCapsule_Type, &cs_ptr,
 				   &PyCapsule_Type, &regrid_ptr,
-				   &iter, &dt);
+				   &iter, &dt,
+				   &PyList_Type, &diag_list);
   if (!ok)
     return NULL;
 
   cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
   regrid_cs = PyCapsule_GetPointer(regrid_ptr, "MOM6 ALE CS");
+
+  if (diag_list) {
+    init_ag_diags_from_list(cs, regrid_cs, diag_list);
+  }
+
   get_domain_dims(cs, &ni, &nj, &nk);
   dims[0] = ni; dims[1] = nj; dims[2] = nk;
   PyObject *h_new = PyArray_New(&PyArray_Type, 3, dims, NPY_DOUBLE, NULL, NULL, 0, NPY_ARRAY_FARRAY, NULL);
@@ -163,6 +218,11 @@ static PyObject *pyale_accelerate_ale(PyObject *self, PyObject *args, PyObject *
     Py_DECREF(s_new);
 
     return NULL;
+  }
+
+  if (diag_list) {
+    PyObject *diag_dict = ag_diag_dict(cs, regrid_cs, diag_list);
+    return Py_BuildValue("(NNNN)", h_new, t_new, s_new, diag_dict);
   }
 
   return Py_BuildValue("(NNN)", h_new, t_new, s_new);

@@ -56,6 +56,40 @@ subroutine init_MOM_ale(CS, regrid_CS, params, cscheme, schemelen) bind(C)
   regrid_CS = c_loc(rCS)
 end subroutine init_MOM_ale
 
+subroutine init_AG_diags(CS, regrid_CS, diags, diag_lens, num_diags) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : MOM_state_type, regridding_CS, f_init => init_AG_diags, f => register_AG_diag
+  implicit none
+
+  type(c_ptr), intent(in), value :: CS, regrid_CS
+  integer(c_int), intent(in), value :: num_diags
+  type(c_ptr), intent(in) :: diags(num_diags)
+  integer(c_int), intent(in) :: diag_lens(num_diags)
+
+  type(MOM_state_type), pointer :: fCS
+  type(regridding_CS), pointer :: rCS
+  character, pointer :: str(:)
+  character(:), allocatable :: fstr
+  integer :: i, len
+
+  call c_f_pointer(CS, fCS)
+  call c_f_pointer(regrid_CS, rCS)
+  call f_init(rCS)
+
+  do i = 1, num_diags
+    len = diag_lens(i)
+    ! read the C array as an F array
+    call c_f_pointer(diags(i), str, [len])
+
+    ! transfer the F array into a scalar
+    allocate(character(len) :: fstr)
+    fstr = transfer(str(:), fstr)
+
+    call f(fCS, rCS, fstr)
+    deallocate(fstr)
+  end do
+end subroutine init_AG_diags
+
 subroutine get_domain_dims(CS, ni, nj, nk) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type
@@ -70,6 +104,71 @@ subroutine get_domain_dims(CS, ni, nj, nk) bind(C)
   nj = fCS%HI%jec - fCS%HI%jsc + 1
   nk = fCS%GV%ke
 end subroutine get_domain_dims
+
+subroutine get_AG_diag_dims(CS, diag, diag_len, ni, nj, nk) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : MOM_state_type
+  implicit none
+
+  type(c_ptr), intent(in), value :: CS, diag
+  integer(c_int), intent(in), value :: diag_len
+  integer(c_int), intent(out) :: ni, nj, nk
+  type(MOM_state_type), pointer :: fCS
+  character, pointer :: str(:)
+  character(:), allocatable :: fstr
+  integer :: isd, ied, jsd, jed, isdB, iedB, jsdB, jedB, ke
+
+  call c_f_pointer(CS, fCS)
+
+  call c_f_pointer(diag, str, [diag_len])
+  allocate(character(diag_len) :: fstr)
+  fstr = transfer(str(:), fstr)
+
+  isd  = fCS%G%isd  ; ied  = fCS%G%ied  ; jsd  = fCS%G%jsd  ; jed  = fCS%G%jed
+  isdB = fCS%G%isdB ; iedB = fCS%G%iedB ; jsdB = fCS%G%jsdB ; jedB = fCS%G%jedB
+  ke = fCS%GV%ke
+
+  select case (fstr)
+  case ("adapt_slope_u", "adapt_denom_u", "adapt_phys_u", "adapt_coord_u")
+    ni = iedB - isdB + 1
+    nj = jed - jsd + 1
+    nk = ke + 1
+  case ("adapt_slope_v", "adapt_denom_v", "adapt_phys_v", "adapt_coord_v")
+    ni = ied - isd + 1
+    nj = jedB - jsdB + 1
+    nk = ke + 1
+  case ("adapt_limiting_density", "adapt_limiting_smoothing", "adapt_disp_density", "adapt_disp_smoothing", "adapt_disp_unlimited")
+    ni = ied - isd + 1
+    nj = jed - jsd + 1
+    nk = ke + 1
+  end select
+
+  deallocate(fstr)
+end subroutine get_AG_diag_dims
+
+subroutine get_AG_diag_data(regrid_CS, diag, diag_len, diag_arr, ni, nj, nk) bind(C)
+  use, intrinsic :: iso_c_binding
+  use pyale_mod, only : regridding_CS, f => get_AG_diag
+  implicit none
+
+  type(c_ptr), intent(in), value :: regrid_CS, diag
+  integer(c_int), intent(in), value :: diag_len, ni, nj, nk
+  real(c_double), intent(inout), dimension(ni,nj,nk) :: diag_arr
+  type(regridding_CS), pointer :: rCS
+  character, pointer :: str(:)
+  character(:), allocatable :: fstr
+
+  call c_f_pointer(regrid_CS, rCS)
+
+
+  call c_f_pointer(diag, str, [diag_len])
+  allocate(character(diag_len) :: fstr)
+  fstr = transfer(str(:), fstr)
+
+  call f(rCS, fstr, diag_arr)
+
+  deallocate(fstr)
+end subroutine get_AG_diag_data
 
 function do_MOM_regrid(CS, regrid_CS, dt, h_new, ni, nj, nk) bind(C)
   use, intrinsic :: iso_c_binding
