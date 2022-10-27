@@ -189,7 +189,7 @@ function do_MOM_regrid(CS, regrid_CS, dt, h_new, ni, nj, nk) bind(C)
   do_MOM_regrid = f(fCS, rCS, dt, h_new)
 end function do_MOM_regrid
 
-function do_MOM_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new, ni, nj, nk) bind(C)
+function do_MOM_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new, ni, nj, nk, restart) bind(C)
   use, intrinsic :: iso_c_binding
   use pyale_mod, only : MOM_state_type, regridding_CS, f => do_accelerate
   implicit none
@@ -198,6 +198,7 @@ function do_MOM_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new, n
   integer(c_int), intent(in), value :: iter, ni, nj, nk
   real(c_double), intent(in), value :: dt
   real(c_double), intent(inout), dimension(ni,nj,nk) :: h_new, temp_new, salt_new
+  logical(c_bool), intent(in), value :: restart
   logical(c_bool) :: do_MOM_accelerate
   type(MOM_state_type), pointer :: fCS
   type(regridding_CS), pointer :: rCS
@@ -205,7 +206,7 @@ function do_MOM_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new, n
   call c_f_pointer(CS, fCS)
   call c_f_pointer(regrid_CS, rCS)
 
-  do_MOM_accelerate = f(fCS, rCS, iter, dt, h_new, temp_new, salt_new)
+  do_MOM_accelerate = f(fCS, rCS, iter, dt, h_new, temp_new, salt_new, logical(restart))
 end function do_MOM_accelerate
 
 function do_MOM_remap(CS, h_new, temp_new, salt_new, ni, nj, nk) bind(C)

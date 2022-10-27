@@ -268,12 +268,13 @@ end subroutine get_AG_diag
     do_regrid = .true.
   end function do_regrid
 
-  function do_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new)
+  function do_accelerate(CS, regrid_CS, iter, dt, h_new, temp_new, salt_new, restart)
     type(MOM_state_type), intent(in) :: CS
     type(regridding_CS), intent(inout) :: regrid_CS
     integer, intent(in) :: iter
     real, intent(in) :: dt
-    real, dimension(:,:,:), intent(out) :: h_new, temp_new, salt_new
+    real, dimension(:,:,:), intent(inout) :: h_new, temp_new, salt_new
+    logical, intent(in) :: restart
     logical :: do_accelerate
 
     integer :: i, j, it
@@ -287,9 +288,22 @@ end subroutine get_AG_diag
     do_accelerate = .false.
 
     ! copy the original state
-    h_loc(:,:,:) = CS%h(:,:,:)
-    T_loc(:,:,:) = CS%tv%T(:,:,:)
-    S_loc(:,:,:) = CS%tv%S(:,:,:)
+    if (restart) then
+      h_loc(:,:,:) = 0.0
+      T_loc(:,:,:) = 0.0
+      S_loc(:,:,:) = 0.0
+
+      h_loc(isc:iec,jsc:jec,:) = h_new
+      T_loc(isc:iec,jsc:jec,:) = temp_new
+      S_loc(isc:iec,jsc:jec,:) = salt_new
+    else
+      h_loc(:,:,:) = CS%h(:,:,:)
+      T_loc(:,:,:) = CS%tv%T(:,:,:)
+      S_loc(:,:,:) = CS%tv%S(:,:,:)
+    end if
+    ! copy into h_new so we get a sensible output for 0 iterations
+    h_new_full(:,:,:) = h_loc(:,:,:)
+
     tv_loc = CS%tv
     tv_loc%T => T_loc
     tv_loc%S => S_loc

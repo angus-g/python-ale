@@ -40,3 +40,15 @@ def test_diag_accelerated():
 
     h_new, t_new, s_new, diags = pyale.accelerate_ale(cs, regrid_cs, 1, dt=1.0, diags=["adapt_slope_u"])
     assert "adapt_slope_u" in diags
+
+def test_diag_accelerated_resume():
+    params["INPUTDIR"] = str(FIXTURE_DIR)
+
+    cs = pyale.mom_init_cs(params)
+    pyale.load_mom_restart(cs, str(FIXTURE_DIR / "MOM.res.nc"))
+    regrid_cs = pyale.mom_init_regrid(cs, params, "ADAPTIVE")
+
+    state = pyale.accelerate_ale(cs, regrid_cs, 1, dt=1.0, diags=["adapt_slope_u"])
+    print(state[0])
+    h_new, t_new, s_new, diags = pyale.resume_ale(cs, regrid_cs, state, 1, dt=1.0)
+    assert "adapt_slope_u" in diags

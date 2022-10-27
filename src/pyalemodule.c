@@ -14,7 +14,7 @@ extern void destroy_mom_state(void*);
 extern void destroy_mom_ale(void*);
 extern void get_domain_dims(void*, int*, int*, int*);
 extern bool do_mom_regrid(void*, void*, double, double*, int, int, int);
-extern bool do_mom_accelerate(void*, void*, int, double, double*, double*, double*, int, int, int);
+extern bool do_mom_accelerate(void*, void*, int, double, double*, double*, double*, int, int, int, bool);
 extern void get_ag_diag_dims(void*, const char*, int, int*, int*, int*);
 extern void get_ag_diag_data(void*, const char*, int, double*, int, int, int);
 extern bool do_mom_remap(void*, double*, double*, double*, int, int, int);
@@ -210,7 +210,7 @@ static PyObject *pyale_accelerate_ale(PyObject *self, PyObject *args, PyObject *
 			 (double*)PyArray_DATA((PyArrayObject*)h_new),
 			 (double*)PyArray_DATA((PyArrayObject*)t_new),
 			 (double*)PyArray_DATA((PyArrayObject*)s_new),
-			 ni, nj, nk)) {
+			 ni, nj, nk, false)) {
     clear_mom_error();
     PyErr_SetString(PyExc_RuntimeError, "Error running accelerated ALE");
     Py_DECREF(h_new);
@@ -226,6 +226,69 @@ static PyObject *pyale_accelerate_ale(PyObject *self, PyObject *args, PyObject *
   }
 
   return Py_BuildValue("(NNN)", h_new, t_new, s_new);
+}
+
+static char *resume_keywords[] = {
+  "mom_cs", "regrid_cs", "state", "iter", "dt", NULL,
+};
+
+static PyObject *pyale_resume_ale(PyObject *self, PyObject *args, PyObject *kwargs) {
+  void *cs, *regrid_cs;
+  int ok;
+  PyObject *cs_ptr, *regrid_ptr, *state_tuple, *h_new, *t_new, *s_new, *diag_dict;
+  int ni, nj, nk, iter;
+  double dt = 0.0;
+
+  ok = PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!i|$d", resume_keywords,
+				   &PyCapsule_Type, &cs_ptr,
+				   &PyCapsule_Type, &regrid_ptr,
+				   &PyTuple_Type, &state_tuple,
+				   &iter, &dt);
+  if (!ok)
+    return NULL;
+
+  // state needs 3 (H, T, S), or 4 (+ diag) elements
+  Py_ssize_t tuple_size = PyTuple_Size(state_tuple);
+  if (tuple_size != 3 && tuple_size != 4)
+    return NULL;
+
+  cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
+  regrid_cs = PyCapsule_GetPointer(regrid_ptr, "MOM6 ALE CS");
+
+  h_new = PyTuple_GetItem(state_tuple, 0);
+  t_new = PyTuple_GetItem(state_tuple, 1);
+  s_new = PyTuple_GetItem(state_tuple, 2);
+
+  get_domain_dims(cs, &ni, &nj, &nk);
+  if (!do_mom_accelerate(cs, regrid_cs, iter, dt,
+			 (double*)PyArray_DATA((PyArrayObject*)h_new),
+			 (double*)PyArray_DATA((PyArrayObject*)t_new),
+			 (double*)PyArray_DATA((PyArrayObject*)s_new),
+			 ni, nj, nk, true)) {
+    clear_mom_error();
+    PyErr_SetString(PyExc_RuntimeError, "Error running accelerated ALE");
+    Py_DECREF(h_new);
+    Py_DECREF(t_new);
+    Py_DECREF(s_new);
+
+    return NULL;
+  }
+
+  if (tuple_size == 4) {
+    PyObject *diag_str, *diag_arr;
+    Py_ssize_t pos = 0;
+
+    diag_dict = PyTuple_GetItem(state_tuple, 3);
+
+    while (PyDict_Next(diag_dict, &pos, &diag_str, &diag_arr)) {
+      const char *diag = PyUnicode_AsUTF8(diag_str);
+      int len = PyUnicode_GET_LENGTH(diag_str);
+      get_ag_diag_dims(cs, diag, len, &ni, &nj, &nk);
+      get_ag_diag_data(regrid_cs, diag, len, (double*)PyArray_DATA((PyArrayObject*)diag_arr), ni, nj, nk);
+    }
+  }
+
+  return state_tuple;
 }
 
 static PyObject *pyale_do_remap(PyObject *self, PyObject *args) {
@@ -285,7 +348,8 @@ static PyMethodDef PyaleMethods[] = {
   {"load_mom_restart", pyale_load_restart, METH_VARARGS, "Load a MOM restart."},
   {"mom_init_regrid", pyale_init_regrid, METH_VARARGS, "Initialise MOM regridding."},
   {"do_regrid", (PyCFunction) pyale_do_regrid, METH_VARARGS | METH_KEYWORDS, "Perform MOM regridding."},
-  {"accelerate_ale", (PyCFunction) pyale_accelerate_ale, METH_VARARGS | METH_KEYWORDS, "Perform iterated MOM regridding/remapping. Returns a (H, T, S) tuple."},
+  {"accelerate_ale", (PyCFunction) pyale_accelerate_ale, METH_VARARGS | METH_KEYWORDS, "Perform iterated MOM regridding/remapping. Returns a (H, T, S, [diag]) tuple."},
+  {"resume_ale", (PyCFunction) pyale_resume_ale, METH_VARARGS | METH_KEYWORDS, "Resume from a previous iterated regridding/remapping. Requires a (H, T, S, [diag]) tuple."},
   {"do_remap", pyale_do_remap, METH_VARARGS, "Perform MOM remapping. Returns a (T, S) tuple."},
   {NULL, NULL, 0, NULL},
 };

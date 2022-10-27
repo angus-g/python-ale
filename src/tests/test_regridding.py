@@ -48,3 +48,10 @@ def test_accelerated_regrid(cs, scheme, params):
     params["INPUTDIR"] = str(FIXTURE_DIR)
     regrid_cs = pyale.mom_init_regrid(cs, params, scheme)
     h_new, t_new, s_new = pyale.accelerate_ale(cs, regrid_cs, 1)
+
+@pytest.mark.parametrize("scheme,params", schemes)
+def test_accelerated_resume(cs, scheme, params):
+    params["INPUTDIR"] = str(FIXTURE_DIR)
+    regrid_cs = pyale.mom_init_regrid(cs, params, scheme)
+    state = pyale.accelerate_ale(cs, regrid_cs, 1)
+    h_new, t_new, s_new = pyale.resume_ale(cs, regrid_cs, state, 1)
