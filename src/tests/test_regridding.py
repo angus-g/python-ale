@@ -10,8 +10,8 @@ def cs():
     params = {
         "NIGLOBAL": 2,
         "NJGLOBAL": 2,
-        "NIHALO": 2,
-        "NJHALO": 2,
+        "NIHALO": 3,
+        "NJHALO": 3,
         "GRID_CONFIG": "cartesian",
         "SOUTHLAT": 30.0,
         "LENLAT": 1.0,
@@ -42,3 +42,9 @@ def test_regrid(cs, scheme, params):
     params["INPUTDIR"] = str(FIXTURE_DIR)
     regrid_cs = pyale.mom_init_regrid(cs, params, scheme)
     h_new = pyale.do_regrid(cs, regrid_cs)
+
+@pytest.mark.parametrize("scheme,params", schemes)
+def test_accelerated_regrid(cs, scheme, params):
+    params["INPUTDIR"] = str(FIXTURE_DIR)
+    regrid_cs = pyale.mom_init_regrid(cs, params, scheme)
+    h_new, t_new, s_new = pyale.accelerate_ale(cs, regrid_cs, 1)
