@@ -333,6 +333,7 @@ contains
     logical(c_bool) :: c_val
 
     logical :: failed
+    c_val = val
     failed = get_dict_logical(CS%ptr, varname, len(trim(varname)), c_val)
     val = c_val
     if (present(fail_if_missing)) then
