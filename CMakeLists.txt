@@ -8,7 +8,8 @@ if (NOT netCDF_FOUND)
   include(FindPkgConfig)
   pkg_check_modules(netCDF REQUIRED IMPORTED_TARGET "netcdf-fortran")
 endif()
-find_package(Python 3.8 REQUIRED
+set(Python_FIND_STRATEGY "LOCATION")
+find_package(Python REQUIRED
   COMPONENTS Interpreter Development.Module NumPy)
 
 option(SYMMETRIC "Use symmetric memory" ON)

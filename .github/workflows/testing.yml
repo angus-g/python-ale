@@ -25,12 +25,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libnetcdff-dev cmake
+          sudo apt-get install -y libnetcdff-dev pkgconf
           python -m pip install --upgrade pip
       - name: Install project
         run: |
-          PKG_CONFIG_SYSTEM_INCLUDE_PATH= pip install .
+          python -m pip install .
+        env:
+          PKG_CONFIG_SYSTEM_INCLUDE_PATH:
       - name: Test with pytest
         run: |
-          pip install pytest
+          python -m pip install pytest
           python -m pytest src -W error
