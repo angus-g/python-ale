@@ -19,7 +19,7 @@ else()
   set(MOM_memory "dynamic_nonsymmetric")
 endif()
 
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -fdefault-real-8 -fPIC -fno-second-underscore -fbacktrace -fno-align-commons -fbounds-check -fcray-pointer")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -fdefault-real-8 -fPIC -fno-second-underscore -fbacktrace -fno-align-commons -fbounds-check -fcray-pointer -fopenmp -ffree-line-length-none")
 
 set(MOM_src
   mom6/src/ALE/MOM_regridding.F90
