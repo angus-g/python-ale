@@ -315,6 +315,7 @@ end subroutine get_AG_diag
            dz_regrid, dt=dt, conv_adjust=.false.)
       if (check_error("regridding_main")) return
 
+      !$omp parallel do private(i, j)
       do j = jsc-1,jec+1
         do i = isc-1,iec+1
           if (CS%G%mask2dT(i,j) == 0) cycle
