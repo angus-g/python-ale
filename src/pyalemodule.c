@@ -266,11 +266,7 @@ static PyObject *pyale_resume_ale(PyObject *self, PyObject *args, PyObject *kwar
 			 (double*)PyArray_DATA((PyArrayObject*)s_new),
 			 ni, nj, nk, true)) {
     clear_mom_error();
-    PyErr_SetString(PyExc_RuntimeError, "Error running accelerated ALE");
-    Py_DECREF(h_new);
-    Py_DECREF(t_new);
-    Py_DECREF(s_new);
-
+    PyErr_SetString(PyExc_RuntimeError, "Error running resumed ALE");
     return NULL;
   }
 
@@ -288,7 +284,7 @@ static PyObject *pyale_resume_ale(PyObject *self, PyObject *args, PyObject *kwar
     }
   }
 
-  return state_tuple;
+  return Py_NewRef(state_tuple);
 }
 
 static PyObject *pyale_do_remap(PyObject *self, PyObject *args) {
