@@ -394,12 +394,12 @@ contains
   end subroutine log_param_int_array
 
   subroutine log_param_real(CS, modulename, varname, val, desc, units, default, &
-       debuggingParam, like_default)
+       debuggingParam, like_default, unscale)
     type(param_file_type), intent(in) :: CS
     character(len=*), intent(in) :: modulename, varname
     real, intent(in) :: val
     character(len=*), optional, intent(in) :: desc, units
-    real, optional, intent(in) :: default
+    real, optional, intent(in) :: default, unscale
     logical, optional, intent(in) :: debuggingParam, like_default
 
     print *, modulename, " ", varname, ": ", val

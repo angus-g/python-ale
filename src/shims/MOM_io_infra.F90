@@ -37,7 +37,7 @@ module MOM_io_infra
 
   interface read_field
     module procedure read_field_0d, read_field_1d, read_field_2d, read_field_2d_region
-    module procedure read_field_3d, read_field_4d
+    module procedure read_field_3d, read_field_3d_region, read_field_4d
     module procedure read_field_0d_int, read_field_1d_int
   end interface read_field
 
@@ -471,6 +471,18 @@ contains
     err = nf90_close(ncid)
     had_error = check_netcdf_err(err, "read_field_3d close")
   end subroutine read_field_3d
+
+  subroutine read_field_3d_region(filename, fieldname, data, start, nread, MOM_domain, &
+       no_domain, scale)
+    character(len=*), intent(in) :: filename, fieldname
+    real, dimension(:,:,:), intent(inout) :: data
+    integer, dimension(:), intent(in) :: start, nread
+    type(MOM_domain_type), optional, intent(in) :: MOM_domain
+    logical, optional, intent(in) :: no_domain
+    real, optional, intent(in) :: scale
+
+    print *, "read_field_3d_region", filename, fieldname
+  end subroutine read_field_3d_region
 
   subroutine read_field_4d(filename, fieldname, data, MOM_domain, timelevel, &
        position, scale, global_file)

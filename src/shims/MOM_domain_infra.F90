@@ -36,7 +36,7 @@ module MOM_domain_infra
 
   integer, parameter :: To_East = 0, To_West = 0, Omit_Corners = 0, To_North = 0, To_South = 0, To_All = 0
   integer, parameter :: CORNER = 1, CENTER = 2, NORTH_FACE = 3, EAST_FACE = 4
-  integer, parameter :: AGRID = 0, BGRID_NE = 0, CGRID_NE = 0, SCALAR_PAIR = 0
+  integer, parameter :: AGRID = 0, BGRID_NE = 41, CGRID_NE = 42, SCALAR_PAIR = 0
 
   interface rescale_comp_data
     module procedure rescale_comp_data_2d, rescale_comp_data_3d, rescale_comp_data_4d
@@ -375,11 +375,11 @@ contains
   end subroutine create_MOM_domain
 
   subroutine clone_MOM_domain(MD_in, MOM_dom, min_halo, halo_size, symmetric, &
-       domain_name, turns, refine, extra_halo)
+       domain_name, turns, refine, extra_halo, io_layout)
     type(MOM_domain_type), target, intent(in) :: MD_in
     type(MOM_domain_type), pointer :: MOM_dom
     integer, dimension(2), optional, intent(inout) :: min_halo
-    integer, optional, intent(in) :: halo_size, turns, refine, extra_halo
+    integer, optional, intent(in) :: halo_size, turns, refine, extra_halo, io_layout(2)
     logical, optional, intent(in) :: symmetric
     character(len=*), optional, intent(in) :: domain_name
 

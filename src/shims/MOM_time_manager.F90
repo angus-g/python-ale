@@ -3,7 +3,8 @@ module MOM_time_manager
   implicit none ; private
 
   public :: set_time, get_time, time_type, get_ticks_per_second
-  public :: set_date, get_date, real_to_time, operator(-), operator(==)
+  public :: set_date, get_date, real_to_time
+  public :: operator(-), operator(==), operator(>), operator(/=)
   public :: days_in_month, time_type_to_real
 
   interface set_date
@@ -16,6 +17,8 @@ module MOM_time_manager
 
   interface operator (-); module procedure time_minus; end interface
   interface operator (==); module procedure time_eq; end interface
+  interface operator (/=); module procedure time_neq; end interface
+  interface operator (>); module procedure time_gt; end interface
 
 contains
 
@@ -31,6 +34,20 @@ contains
     time_eq = .false.
   end function time_eq
 
+  function time_neq(time1, time2)
+    logical :: time_neq
+    type(time_type), intent(in) :: time1, time2
+
+    time_neq = .true.
+  end function time_neq
+
+  function time_gt(time1, time2)
+    logical :: time_gt
+    type(time_type), intent(in) :: time1, time2
+
+    time_gt = .false.
+  end function time_gt
+
   function days_in_month(time, err_msg)
     type(time_type), intent(in) :: time
     character(len=*), optional, intent(out) :: err_msg
@@ -39,9 +56,10 @@ contains
     days_in_month = 30
   end function days_in_month
 
-  subroutine set_time
-
-  end subroutine set_time
+  function set_time(seconds, days)
+    integer, intent(in) :: seconds, days
+    type(time_type) :: set_time
+  end function set_time
 
   subroutine get_time(time, seconds, days, ticks, err_msg)
     type(time_type), intent(in) :: time

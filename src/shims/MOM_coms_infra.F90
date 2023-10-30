@@ -35,7 +35,7 @@ module MOM_coms_infra
 
   interface broadcast
     module procedure broadcast_char, broadcast_int32_0D, broadcast_int64_0D, broadcast_int1D
-    module procedure broadcast_real0D, broadcast_real1D, broadcast_real2D
+    module procedure broadcast_real0D, broadcast_real1D, broadcast_real2D, broadcast_real3D
   end interface broadcast
 
   interface field_chksum
@@ -229,6 +229,14 @@ contains
     integer, optional, intent(in) :: pelist(:)
     logical, optional, intent(in) :: blocking
   end subroutine broadcast_real2D
+
+  subroutine broadcast_real3D(dat, length, from_PE, PElist, blocking)
+    real, dimension(:,:,:), intent(inout) :: dat
+    integer, intent(in) :: length
+    integer, optional, intent(in) :: from_PE
+    integer, optional, intent(in) :: pelist(:)
+    logical, optional, intent(in) :: blocking
+  end subroutine broadcast_real3D
 
   function field_chksum_int(field, pelist, mask_val) result(chksum)
     integer(kind=int64), dimension(:), intent(in) :: field

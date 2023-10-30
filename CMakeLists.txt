@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.12)
 project(pyale
   LANGUAGES Fortran C)
 
+find_package(MPI COMPONENTS Fortran)
+
 find_package(netCDF CONFIGS netCDF-FortranConfig.cmake)
 if (NOT netCDF_FOUND)
   include(FindPkgConfig)
@@ -22,10 +24,10 @@ endif()
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -fdefault-real-8 -fPIC -fno-second-underscore -fbacktrace -fno-align-commons -fbounds-check -fcray-pointer -fopenmp -ffree-line-length-none")
 
 set(MOM_src
+  mom6/src/ALE/MOM_ALE.F90
   mom6/src/ALE/MOM_regridding.F90
   mom6/src/ALE/MOM_remapping.F90
 
-  mom6/src/ALE/filter_utils.F90
   mom6/src/ALE/polynomial_functions.F90
   mom6/src/ALE/PCM_functions.F90
   mom6/src/ALE/PLM_functions.F90
@@ -37,14 +39,15 @@ set(MOM_src
   mom6/src/ALE/regrid_edge_values.F90
   mom6/src/ALE/regrid_interp.F90
   mom6/src/ALE/regrid_solvers.F90
+  mom6/src/ALE/remapping_attic.F90
 
   mom6/src/ALE/MOM_hybgen_regrid.F90
   mom6/src/ALE/MOM_hybgen_remap.F90
+  mom6/src/ALE/MOM_hybgen_unmix.F90
   mom6/src/ALE/coord_adapt.F90
   mom6/src/ALE/coord_hycom.F90
   mom6/src/ALE/coord_rho.F90
   mom6/src/ALE/coord_sigma.F90
-  mom6/src/ALE/coord_slight.F90
   mom6/src/ALE/coord_zlike.F90
 
   mom6/src/framework/MOM_array_transform.F90
@@ -54,7 +57,6 @@ set(MOM_src
   mom6/src/framework/MOM_cpu_clock.F90
   mom6/src/framework/MOM_diag_mediator.F90
   mom6/src/framework/MOM_diag_remap.F90
-  mom6/src/framework/MOM_diag_vkernels.F90
   mom6/src/framework/MOM_document.F90
   mom6/src/framework/MOM_domains.F90
   mom6/src/framework/MOM_dyn_horgrid.F90
@@ -63,27 +65,41 @@ set(MOM_src
   mom6/src/framework/MOM_get_input.F90
   mom6/src/framework/MOM_hor_index.F90
   mom6/src/framework/MOM_io.F90
+  mom6/src/framework/MOM_io_file.F90
+  mom6/src/framework/MOM_netcdf.F90
   mom6/src/framework/MOM_restart.F90
   mom6/src/framework/MOM_safe_alloc.F90
   mom6/src/framework/MOM_string_functions.F90
   mom6/src/framework/MOM_unit_scaling.F90
   mom6/src/framework/posix.F90
 
+  mom6/src/ice_shelf/MOM_ice_shelf_initialize.F90
+
+  mom6/src/user/ISOMIP_initialization.F90
+
+  mom6/src/core/MOM_density_integrals.F90
   mom6/src/core/MOM_grid.F90
+  mom6/src/core/MOM_interface_heights.F90
   mom6/src/core/MOM_transcribe_grid.F90
   mom6/src/core/MOM_variables.F90
   mom6/src/core/MOM_verticalGrid.F90
 
   mom6/src/diagnostics/MOM_debugging.F90
   mom6/src/diagnostics/MOM_obsolete_params.F90
+  mom6/src/diagnostics/MOM_spatial_means.F90
 
   mom6/src/equation_of_state/MOM_EOS.F90
   mom6/src/equation_of_state/MOM_EOS_linear.F90
   mom6/src/equation_of_state/MOM_EOS_Wright.F90
+  mom6/src/equation_of_state/MOM_EOS_Wright_full.F90
+  mom6/src/equation_of_state/MOM_EOS_Wright_red.F90
+  mom6/src/equation_of_state/MOM_EOS_Jackett06.F90
+  mom6/src/equation_of_state/MOM_EOS_Roquet_rho.F90
+  mom6/src/equation_of_state/MOM_EOS_Roquet_SpV.F90
   mom6/src/equation_of_state/MOM_EOS_UNESCO.F90
-  mom6/src/equation_of_state/MOM_EOS_NEMO.F90
   mom6/src/equation_of_state/MOM_EOS_TEOS10.F90
   mom6/src/equation_of_state/MOM_TFreeze.F90
+  mom6/src/equation_of_state/MOM_temperature_convert.F90
 
   mom6/src/equation_of_state/TEOS10/gsw_chem_potential_water_t_exact.f90
   mom6/src/equation_of_state/TEOS10/gsw_ct_freezing_exact.f90
@@ -120,10 +136,14 @@ set(MOM_src
   mom6/src/initialization/MOM_fixed_initialization.F90
   mom6/src/initialization/MOM_grid_initialize.F90
   mom6/src/initialization/MOM_shared_initialization.F90
+  mom6/src/initialization/MOM_state_initialization.F90
+
+  mom6/src/tracer/MOM_tracer_Z_init.F90
 )
 
 set(shim_src
   src/shims/MOM_coms_infra.F90
+  src/shims/MOM_constants.F90
   src/shims/MOM_couplertype_infra.F90
   src/shims/MOM_cpu_clock_infra.F90
   src/shims/MOM_diag_manager_infra.F90
@@ -138,8 +158,11 @@ set(shim_src
 
   # shimming regular modules which we don't need
   src/shims/MOM_open_boundary.F90
-  src/shims/MOM_tracer_types.F90
+  src/shims/MOM_tracers.F90
   src/shims/user_initialization.F90
+  src/shims/MOM_horizontal_regridding.F90
+  src/shims/MOM_sponges.F90
+  src/shims/MOM_oda.F90
 )
 
 set(MOM_inc

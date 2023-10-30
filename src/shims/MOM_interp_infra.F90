@@ -5,14 +5,18 @@ module MOM_interp_infra
 
   implicit none ; private
 
-  public :: horiz_interp_type
+  public :: horiz_interp_type, external_field
   public :: time_interp_extern, init_extern_field, get_external_field_info
-  public :: time_interp_extern_init
+  public :: time_interp_extern_init, horizontal_interp_init
   public :: run_horiz_interp, build_horiz_interp_weights
 
   type :: horiz_interp_type
 
   end type horiz_interp_type
+
+  type :: external_field
+
+  end type external_field
 
   interface time_interp_extern
     module procedure time_interp_extern_0d, time_interp_extern_2d, time_interp_extern_3d
@@ -20,12 +24,16 @@ module MOM_interp_infra
 
 contains
 
+  subroutine horizontal_interp_init
+
+  end subroutine horizontal_interp_init
+
   subroutine time_interp_extern_init
 
   end subroutine time_interp_extern_init
 
-  subroutine time_interp_extern_0d(field_id, time, data_in, verbose)
-    integer, intent(in) :: field_id
+  subroutine time_interp_extern_0d(field, time, data_in, verbose)
+    type(external_field), intent(in) :: field
     type(time_type), intent(in) :: time
     real, intent(inout) :: data_in
     logical, optional, intent(in) :: verbose
@@ -33,8 +41,8 @@ contains
     print *, "time_interp_extern_0d"
   end subroutine time_interp_extern_0d
 
-  subroutine time_interp_extern_2d(field_id, time, data_in, interp, verbose, horz_interp, mask_out)
-    integer, intent(in) :: field_id
+  subroutine time_interp_extern_2d(field, time, data_in, interp, verbose, horz_interp, mask_out)
+    type(external_field), intent(in) :: field
     type(time_type), intent(in) :: time
     real, dimension(:,:), intent(inout) :: data_in
     integer, optional, intent(in) :: interp
@@ -45,8 +53,8 @@ contains
     print *, "time_interp_extern_2d"
   end subroutine time_interp_extern_2d
 
-  subroutine time_interp_extern_3d(field_id, time, data_in, interp, verbose, horz_interp, mask_out)
-    integer, intent(in) :: field_id
+  subroutine time_interp_extern_3d(field, time, data_in, interp, verbose, horz_interp, mask_out)
+    type(external_field), intent(in) :: field
     type(time_type), intent(in) :: time
     real, dimension(:,:,:), intent(inout) :: data_in
     integer, optional, intent(in) :: interp
@@ -65,10 +73,9 @@ contains
     logical, optional, intent(in) :: verbose, ignore_axis_atts, correct_leap_year_inconsistency
     integer, optional, intent(in) :: threading
     integer, optional, intent(out) :: ierr
-    integer :: init_extern_field
+    type(external_field) :: init_extern_field
 
     print *, "init_extern_field", file, fieldname
-    init_extern_field = -1
   end function init_extern_field
 
   subroutine run_horiz_interp
