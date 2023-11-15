@@ -58,8 +58,8 @@ static PyObject *mom_init_shelf(PyObject *self, PyObject *args) {
   if (!ok)
     return NULL;
 
-  cs_ptr = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
-  if (!init_mom_shelf(&cs, param_dict)) {
+  cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
+  if (!init_mom_shelf(cs, param_dict)) {
     clear_mom_error();
     PyErr_SetString(PyExc_RuntimeError, "Error querying ice shelf from model");
     return NULL;
@@ -77,8 +77,8 @@ static PyObject *mom_displace_sfc(PyObject *self, PyObject *args) {
   if (!ok)
     return NULL;
 
-  cs_ptr = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
-  if (!calc_mom_sfc_displacement(&cs, param_dict)) {
+  cs = PyCapsule_GetPointer(cs_ptr, "MOM6 CS");
+  if (!calc_mom_sfc_displacement(cs, param_dict)) {
     clear_mom_error();
     PyErr_SetString(PyExc_RuntimeError, "Error displacing model surface");
     return NULL;
@@ -104,7 +104,7 @@ static PyObject *pyale_get_thickness(PyObject *self, PyObject *args) {
   dims[0] = ni; dims[1] = nj; dims[2] = nk;
   PyObject *h = PyArray_New(&PyArray_Type, 3, dims, NPY_DOUBLE, NULL, NULL, 0, NPY_ARRAY_FARRAY, NULL);
 
-  if (!get_mom_thickness(&cs, (double*)PyArray_DATA((PyArrayObject*)h), ni, nj, nk)) {
+  if (!get_mom_thickness(cs, (double*)PyArray_DATA((PyArrayObject*)h), ni, nj, nk)) {
     clear_mom_error();
     PyErr_SetString(PyExc_RuntimeError, "Error retrieving thickness");
     Py_DECREF(h);

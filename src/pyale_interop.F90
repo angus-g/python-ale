@@ -41,8 +41,7 @@ function init_MOM_shelf(CS, params) bind(C)
   use pyale_mod, only : MOM_state_type, f => init_MOM_shelf
   implicit none
 
-  type(c_ptr), intent(inout) :: CS
-  type(c_ptr), intent(in), value :: params
+  type(c_ptr), intent(in), value :: CS, params
   logical(c_bool) :: init_MOM_shelf
   type(MOM_state_type), pointer :: fCS
 
@@ -55,8 +54,7 @@ function calc_MOM_sfc_displacement(CS, params) bind(C)
   use pyale_mod, only : MOM_state_type, f => MOM_sfc_displacement
   implicit none
 
-  type(c_ptr), intent(inout) :: CS
-  type(c_ptr), intent(in), value :: params
+  type(c_ptr), intent(in), value :: CS, params
   logical(c_bool) :: calc_MOM_sfc_displacement
   type(MOM_state_type), pointer :: fCS
 
@@ -69,7 +67,7 @@ function get_MOM_thickness(CS, h, ni, nj, nk) bind(C)
   use pyale_mod, only : MOM_state_type
   implicit none
 
-  type(c_ptr), intent(in) :: CS
+  type(c_ptr), intent(in), value :: CS
   integer(c_int), intent(in), value :: ni, nj, nk
   real(c_double), intent(inout), dimension(ni,nj,nk) :: h
   logical(c_bool) :: get_MOM_thickness
