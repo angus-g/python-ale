@@ -128,6 +128,7 @@ contains
     allocate(depth_tot(isd:ied, jsd:jed))
 
     dz(:,:,:) = 0.0
+    depth_tot(:,:) = CS%G%bathyT(:,:) + CS%G%Z_ref
 
     ! init thickness for isomip
     call ISOMIP_initialize_thickness(dz, depth_tot, CS%G, CS%GV, CS%US, CS%param_file, CS%tv, just_read=.false.)
